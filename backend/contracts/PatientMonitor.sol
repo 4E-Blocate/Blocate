@@ -10,23 +10,18 @@ import "./EventLogger.sol";
  * @notice Single entry point for frontend - delegates to specialized contracts
  */
 contract PatientMonitor {
-    
-    // ============ State Variables ============
-    
+        
     DeviceRegistry public deviceRegistry;
     EventLogger public eventLogger;
     
     address public owner;
-    
-    // ============ Events ============
-    
+        
     event ContractsDeployed(
         address deviceRegistry,
         address eventLogger,
         uint256 timestamp
     );
     
-    // ============ Constructor ============
     
     /**
      * @notice Deploy all sub-contracts
@@ -47,7 +42,6 @@ contract PatientMonitor {
         );
     }
     
-    // ============ Device Management (Delegated) ============
     
     function registerDevice(
         string memory deviceId,
@@ -97,7 +91,6 @@ contract PatientMonitor {
         return deviceRegistry.isDeviceActive(deviceId);
     }
     
-    // ============ Event Logging (Delegated) ============
     
     function logEvent(
         string memory deviceId,
@@ -132,9 +125,7 @@ contract PatientMonitor {
     ) external view returns (IEventLogger.EventLog[] memory) {
         return eventLogger.getAllEvents(offset, limit);
     }
-    
-    // ============ Stats ============
-    
+        
     function getTotalDevices() external view returns (uint256) {
         return deviceRegistry.totalDevices();
     }
