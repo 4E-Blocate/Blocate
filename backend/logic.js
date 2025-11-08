@@ -17,13 +17,13 @@ export async function processTelemetry(payload) {
       throw new Error('Invalid telemetry data: missing required fields')
     }
 
-    console.log(`\n🔍 Processing telemetry for ${deviceId}`)
+    console.log(`\nProcessing telemetry for ${deviceId}`)
     console.log(`   BPM: ${bpm}, Temp: ${temp}°C, GPS: ${gps}`)
 
     // Check if device is registered on blockchain
     const registered = await isDeviceRegistered(deviceId)
     if (!registered) {
-      console.warn(`⚠️  Device ${deviceId} not registered on-chain - skipping blockchain logging`)
+      console.warn(`Device ${deviceId} not registered on-chain - skipping blockchain logging`)
     }
 
     // Determine event type based on vitals
@@ -52,17 +52,17 @@ export async function processTelemetry(payload) {
     }
 
     // Store full data in OrbitDB
-    console.log(`💾 Storing event in OrbitDB...`)
+    console.log(`Storing event in OrbitDB...`)
     const orbitHash = await storeEvent(eventData)
 
     // Log hash to blockchain (if device is registered)
     let blockchainResult = null
     if (registered) {
       try {
-        console.log(`⛓️  Logging to blockchain...`)
+        console.log(`Logging to blockchain...`)
         blockchainResult = await logEventToChain(deviceId, eventData, eventType)
       } catch (error) {
-        console.error(`❌ Blockchain logging failed: ${error.message}`)
+        console.error(`Blockchain logging failed: ${error.message}`)
         // Continue anyway - data is still in OrbitDB
       }
     }
@@ -79,11 +79,11 @@ export async function processTelemetry(payload) {
       timestamp: eventData.timestamp
     }
 
-    console.log(`✅ Telemetry processed successfully\n`)
+    console.log(`Telemetry processed successfully\n`)
     return result
 
   } catch (error) {
-    console.error(`❌ Failed to process telemetry: ${error.message}\n`)
+    console.error(`Failed to process telemetry: ${error.message}\n`)
     throw error
   }
 }
@@ -95,7 +95,7 @@ export async function processTelemetry(payload) {
  */
 export async function processAlert(payload) {
   try {
-    console.log(`\n🚨 ALERT received from ${payload.deviceId}`)
+    console.log(`\nALERT received from ${payload.deviceId}`)
     
     // Treat alerts as critical events
     const eventData = {
@@ -124,7 +124,7 @@ export async function processAlert(payload) {
       }
     }
 
-    console.log(`✅ Alert processed\n`)
+    console.log(`Alert processed\n`)
     
     return {
       success: true,
@@ -137,7 +137,7 @@ export async function processAlert(payload) {
     }
 
   } catch (error) {
-    console.error(`❌ Failed to process alert: ${error.message}\n`)
+    console.error(`Failed to process alert: ${error.message}\n`)
     throw error
   }
 }

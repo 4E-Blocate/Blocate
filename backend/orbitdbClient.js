@@ -12,7 +12,7 @@ let isInitialized = false
  */
 export async function initStorage() {
   try {
-    console.log('📦 Initializing decentralized storage...')
+    console.log('Initializing decentralized storage...')
 
     // Initialize IPFS
     console.log('   Starting IPFS node...')
@@ -28,14 +28,14 @@ export async function initStorage() {
 
     const nodeId = await ipfsInstance.id()
     const nodeIdStr = typeof nodeId.id === 'string' ? nodeId.id : nodeId.id.toString()
-    console.log(`✅ IPFS initialized (ID: ${nodeIdStr.substring(0, 16)}...)`)
+    console.log(`IPFS initialized (ID: ${nodeIdStr.substring(0, 16)}...)`)
 
     // Initialize OrbitDB
     console.log('   Starting OrbitDB...')
     orbitdb = await OrbitDB.createInstance(ipfsInstance, {
       directory: config.ORBITDB_DIRECTORY
     })
-    console.log(`✅ OrbitDB initialized`)
+    console.log(`OrbitDB initialized`)
 
     // Open or create event database
     if (config.ORBITDB_ADDRESS) {
@@ -52,24 +52,24 @@ export async function initStorage() {
     await eventDB.load()
     
     const eventCount = eventDB.iterator({ limit: -1 }).collect().length
-    console.log(`✅ Event database ready`)
+    console.log(`Event database ready`)
     console.log(`   Address: ${eventDB.address.toString()}`)
     console.log(`   Events: ${eventCount}`)
 
     // Setup replication events
     eventDB.events.on('replicated', (address) => {
-      console.log(`🔄 Data replicated from peer: ${address}`)
+      console.log(`Data replicated from peer: ${address}`)
     })
 
     eventDB.events.on('write', (address, entry) => {
-      console.log(`✍️  New entry written: ${entry.hash.substring(0, 16)}...`)
+      console.log(`New entry written: ${entry.hash.substring(0, 16)}...`)
     })
 
     isInitialized = true
     return true
 
   } catch (error) {
-    console.error('❌ Storage initialization failed:', error.message)
+    console.error('Storage initialization failed:', error.message)
     throw error
   }
 }

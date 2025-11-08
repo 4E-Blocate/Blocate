@@ -1,0 +1,15 @@
+[
+  "function registerDevice(string deviceId, address guardian) external",
+  "function logEvent(string deviceId, bytes32 dataHash, string eventType) external",
+  "function getDevice(string deviceId) external view returns (tuple(string deviceId, address patient, address guardian, bool isActive, uint256 registeredAt))",
+  "function getDeviceEvents(string deviceId, uint256 limit) external view returns (tuple(string deviceId, bytes32 dataHash, address guardian, string eventType, uint256 timestamp)[])",
+  "function isDeviceRegistered(string deviceId) external view returns (bool)",
+  "function isDeviceActive(string deviceId) external view returns (bool)",
+  "function getTotalDevices() external view returns (uint256)",
+  "function getTotalEvents() external view returns (uint256)",
+  "function getContractAddresses() external view returns (address, address)",
+  "function changeGuardian(string deviceId, address newGuardian) external",
+  "function deactivateDevice(string deviceId) external",
+  "function getGuardianDevices(address guardian) external view returns (string[])",
+  "function getPatientDevices(address patient) external view returns (string[])"
+]

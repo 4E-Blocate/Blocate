@@ -71,8 +71,12 @@ contract DeviceRegistry is IDeviceRegistry {
             "DeviceRegistry: Invalid guardian address"
         );
         require(
-            bytes(deviceId).length > 0,
-            "DeviceRegistry: Invalid device ID"
+            msg.sender != address(0),
+            "DeviceRegistry: Invalid patient address"
+        );
+        require(
+            bytes(deviceId).length >= 8,
+            "DeviceRegistry: Device ID too short (min 8 chars)"
         );
         
         devices[deviceId] = Device({
@@ -117,15 +121,17 @@ contract DeviceRegistry is IDeviceRegistry {
     
     /**
      * @notice Deactivate a device
-     * @dev Can be called by patient or guardian
+     * @dev Can be called by patient or guardian. Gas-optimized with memory caching.
      * @param deviceId Device to deactivate
      */
     function deactivateDevice(
         string memory deviceId
     ) external override deviceExists(deviceId) {
+        // Cache device in memory to avoid redundant storage reads
+        Device memory device = devices[deviceId];
         require(
-            devices[deviceId].patient == msg.sender || 
-            devices[deviceId].guardian == msg.sender,
+            device.patient == msg.sender || 
+            device.guardian == msg.sender,
             "DeviceRegistry: Not authorized"
         );
         
@@ -211,5 +217,12 @@ contract DeviceRegistry is IDeviceRegistry {
         string memory deviceId
     ) external view returns (address) {
         return devices[deviceId].patient;
+    }
+    
+    /**
+     * @dev Reject direct ETH transfers to prevent accidental loss
+     */
+    receive() external payable {
+        revert("DeviceRegistry: ETH not accepted");
     }
 }

@@ -37,15 +37,15 @@ export function validateConfig() {
   const errors = []
 
   if (!config.TON_CONTRACT_ADDRESS || config.TON_CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
-    errors.push('⚠️  TON_CONTRACT_ADDRESS not set - blockchain logging disabled')
+    errors.push('TON_CONTRACT_ADDRESS not set - blockchain logging disabled')
   }
 
   if (!config.TON_PRIVATE_KEY) {
-    errors.push('⚠️  TON_PRIVATE_KEY not set - cannot sign transactions')
+    errors.push('TON_PRIVATE_KEY not set - cannot sign transactions')
   }
 
   if (config.AI_ENABLED && !config.GEMINI_API_KEY) {
-    errors.push('⚠️  AI_ENABLED but GEMINI_API_KEY not set - AI will be disabled')
+    errors.push('AI_ENABLED but GEMINI_API_KEY not set - AI will be disabled')
     config.AI_ENABLED = false
   }
 

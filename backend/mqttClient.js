@@ -11,7 +11,7 @@ let messageHandler = null
  */
 export async function initMQTT(onMessage) {
   return new Promise((resolve, reject) => {
-    console.log('📡 Connecting to MQTT broker...')
+    console.log('Connecting to MQTT broker...')
     console.log(`   Broker: ${config.MQTT_BROKER}`)
 
     const options = {
@@ -32,16 +32,16 @@ export async function initMQTT(onMessage) {
 
     client.on('connect', () => {
       isConnected = true
-      console.log('✅ MQTT connected')
+      console.log('MQTT connected')
       console.log(`   Client ID: ${config.NODE_ID}`)
 
       // Subscribe to all patient telemetry topics
       client.subscribe('patient/+/telemetry', (err) => {
         if (err) {
-          console.error('❌ Failed to subscribe to telemetry topics:', err)
+          console.error('Failed to subscribe to telemetry topics:', err)
           reject(err)
         } else {
-          console.log('✅ Subscribed to: patient/+/telemetry')
+          console.log('Subscribed to: patient/+/telemetry')
           resolve(true)
         }
       })
@@ -49,9 +49,9 @@ export async function initMQTT(onMessage) {
       // Subscribe to alert topics
       client.subscribe('patient/+/alert', (err) => {
         if (err) {
-          console.error('❌ Failed to subscribe to alert topics:', err)
+          console.error('Failed to subscribe to alert topics:', err)
         } else {
-          console.log('✅ Subscribed to: patient/+/alert')
+          console.log('Subscribed to: patient/+/alert')
         }
       })
     })
@@ -59,7 +59,7 @@ export async function initMQTT(onMessage) {
     client.on('message', (topic, message) => {
       try {
         const payload = JSON.parse(message.toString())
-        console.log(`📨 MQTT message received:`)
+        console.log(`MQTT message received:`)
         console.log(`   Topic: ${topic}`)
         console.log(`   Device: ${payload.deviceId}`)
 
@@ -67,27 +67,27 @@ export async function initMQTT(onMessage) {
           messageHandler(topic, payload)
         }
       } catch (error) {
-        console.error('❌ Invalid MQTT message format:', error.message)
+        console.error('Invalid MQTT message format:', error.message)
       }
     })
 
     client.on('error', (error) => {
-      console.error('❌ MQTT error:', error.message)
+      console.error('MQTT error:', error.message)
       isConnected = false
       reject(error)
     })
 
     client.on('offline', () => {
-      console.log('⚠️  MQTT offline')
+      console.log('MQTT offline')
       isConnected = false
     })
 
     client.on('reconnect', () => {
-      console.log('🔄 MQTT reconnecting...')
+      console.log('MQTT reconnecting...')
     })
 
     client.on('close', () => {
-      console.log('🔒 MQTT connection closed')
+      console.log('MQTT connection closed')
       isConnected = false
     })
   })

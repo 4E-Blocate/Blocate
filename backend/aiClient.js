@@ -52,14 +52,14 @@ Keep it under 10 words.`
     
     if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
       const interpretation = data.candidates[0].content.parts[0].text.trim()
-      console.log(`🤖 AI Interpretation: "${interpretation}"`)
+      console.log(`AI Interpretation: "${interpretation}"`)
       return interpretation
     }
 
     return config.AI_FALLBACK_MESSAGE
 
   } catch (error) {
-    console.error('⚠️  AI interpretation failed:', error.message)
+    console.error('AI interpretation failed:', error.message)
     return config.AI_FALLBACK_MESSAGE
   }
 }

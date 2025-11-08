@@ -61,7 +61,7 @@ contract EventLogger is IEventLogger {
     
     /**
      * @notice Log a health event on-chain
-     * @dev Stores only the hash; full data is in OrbitDB
+     * @dev Stores only the hash; full data is in OrbitDB. Only patient/guardian can log.
      * @param deviceId Device that generated the event
      * @param dataHash SHA-256 hash of full event data
      * @param eventType Event severity: "normal", "alert", or "critical"
@@ -75,11 +75,18 @@ contract EventLogger is IEventLogger {
         // Get device info from registry
         IDeviceRegistry.Device memory device = deviceRegistry.getDevice(deviceId);
         
-        // Validate event type
+        // ACCESS CONTROL: Only patient or guardian can log events
         require(
-            keccak256(bytes(eventType)) == keccak256(bytes("normal")) ||
-            keccak256(bytes(eventType)) == keccak256(bytes("alert")) ||
-            keccak256(bytes(eventType)) == keccak256(bytes("critical")),
+            msg.sender == device.patient || msg.sender == device.guardian,
+            "EventLogger: Only patient or guardian can log events"
+        );
+        
+        // Validate event type using enum-like comparison
+        bytes32 typeHash = keccak256(bytes(eventType));
+        require(
+            typeHash == keccak256(bytes("normal")) ||
+            typeHash == keccak256(bytes("alert")) ||
+            typeHash == keccak256(bytes("critical")),
             "EventLogger: Invalid event type"
         );
         
@@ -126,15 +133,18 @@ contract EventLogger is IEventLogger {
     }
     
     /**
-     * @notice Get latest N events for a device
+     * @notice Get latest N events for a device (paginated)
      * @param deviceId Device identifier
-     * @param limit Maximum number of events to return
+     * @param limit Maximum number of events to return (max 100)
      * @return Array of EventLog structs (most recent first)
      */
     function getDeviceEvents(
         string memory deviceId,
         uint256 limit
     ) external view override returns (EventLog[] memory) {
+        // PAGINATION: Enforce maximum limit to prevent gas issues
+        require(limit > 0 && limit <= 100, "EventLogger: Limit must be 1-100");
+        
         uint256[] memory indices = deviceEventIndices[deviceId];
         uint256 count = indices.length > limit ? limit : indices.length;
         
@@ -174,7 +184,7 @@ contract EventLogger is IEventLogger {
     /**
      * @notice Get all events (paginated)
      * @param offset Starting index
-     * @param limit Number of events to return
+     * @param limit Number of events to return (max 100)
      * @return Array of EventLog structs
      */
     function getAllEvents(
@@ -185,6 +195,7 @@ contract EventLogger is IEventLogger {
             offset < eventLogs.length,
             "EventLogger: Offset out of bounds"
         );
+        require(limit > 0 && limit <= 100, "EventLogger: Limit must be 1-100");
         
         uint256 end = offset + limit;
         if (end > eventLogs.length) {
@@ -216,5 +227,12 @@ contract EventLogger is IEventLogger {
             "EventLogger: Event index out of bounds"
         );
         return eventLogs[index].dataHash == dataHash;
+    }
+    
+    /**
+     * @dev Reject direct ETH transfers to prevent accidental loss
+     */
+    receive() external payable {
+        revert("EventLogger: ETH not accepted");
     }
 }

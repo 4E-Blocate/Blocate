@@ -25,17 +25,17 @@ const CONTRACT_ABI = [
 export async function initBlockchain() {
   try {
     if (!config.TON_CONTRACT_ADDRESS || config.TON_CONTRACT_ADDRESS === '') {
-      console.log('⚠️  Blockchain disabled: No contract address provided')
+      console.log('[WARN] Blockchain disabled: No contract address provided')
       return false
     }
 
     if (!config.TON_PRIVATE_KEY || config.TON_PRIVATE_KEY === '') {
-      console.log('⚠️  Blockchain disabled: No private key provided')
+      console.log('[WARN] Blockchain disabled: No private key provided')
       return false
     }
 
-    console.log('🔗 Connecting to TON blockchain...')
-    console.log(`   RPC: ${config.TON_RPC}`)
+    console.log('[INFO] Connecting to TON blockchain...')
+    console.log(`[INFO] RPC: ${config.TON_RPC}`)
 
     // Create provider
     provider = new ethers.JsonRpcProvider(config.TON_RPC)
@@ -47,9 +47,9 @@ export async function initBlockchain() {
     const network = await provider.getNetwork()
     const balance = await provider.getBalance(wallet.address)
     
-    console.log(`✅ Connected to network: ${network.name} (Chain ID: ${network.chainId})`)
-    console.log(`   Wallet: ${wallet.address}`)
-    console.log(`   Balance: ${ethers.formatEther(balance)} ETH`)
+    console.log(`[INFO] Connected to network: ${network.name} (Chain ID: ${network.chainId})`)
+    console.log(`[INFO] Wallet: ${wallet.address}`)
+    console.log(`[INFO] Balance: ${ethers.formatEther(balance)} ETH`)
 
     // Initialize contract
     contract = new ethers.Contract(
@@ -58,22 +58,22 @@ export async function initBlockchain() {
       wallet
     )
 
-    console.log(`✅ Contract initialized: ${config.TON_CONTRACT_ADDRESS}`)
+    console.log(`[INFO] Contract initialized: ${config.TON_CONTRACT_ADDRESS}`)
     
     isInitialized = true
     return true
 
   } catch (error) {
-    console.error('❌ Blockchain initialization failed:', error.message)
+    console.error('[ERROR] Blockchain initialization failed:', error.message)
     return false
   }
 }
 
 /**
  * Log event hash to blockchain
- * @param {string} deviceId - Device ID
- * @param {Object} eventData - Full event data (will be hashed)
- * @param {string} eventType - "normal", "alert", or "critical"
+ * @param {string} deviceId  Device ID
+ * @param {Object} eventData  Full event data (will be hashed)
+ * @param {string} eventType  "normal", "alert", or "critical"
  * @returns {Promise<Object>} Transaction receipt
  */
 export async function logEventToChain(deviceId, eventData, eventType) {
@@ -85,18 +85,18 @@ export async function logEventToChain(deviceId, eventData, eventType) {
     // Generate hash of event data
     const dataHash = hashToBytes32(eventData)
     
-    console.log(`📝 Logging event to blockchain...`)
-    console.log(`   Device: ${deviceId}`)
-    console.log(`   Type: ${eventType}`)
-    console.log(`   Hash: ${dataHash}`)
+    console.log(`[INFO] Logging event to blockchain...`)
+    console.log(`[INFO] Device: ${deviceId}`)
+    console.log(`[INFO] Type: ${eventType}`)
+    console.log(`[INFO] Hash: ${dataHash}`)
 
     // Call smart contract
     const tx = await contract.logEvent(deviceId, dataHash, eventType)
-    console.log(`   Tx submitted: ${tx.hash}`)
+    console.log(`[INFO] Tx submitted: ${tx.hash}`)
 
     // Wait for confirmation
     const receipt = await tx.wait()
-    console.log(`✅ Event logged on-chain (Block: ${receipt.blockNumber})`)
+    console.log(`[INFO] Event logged on-chain (Block: ${receipt.blockNumber})`)
 
     return {
       success: true,
@@ -107,13 +107,13 @@ export async function logEventToChain(deviceId, eventData, eventType) {
     }
 
   } catch (error) {
-    console.error('❌ Failed to log event on-chain:', error.message)
+    console.error('[ERROR] Failed to log event on-chain:', error.message)
     
     // Check specific errors
     if (error.message.includes('Device not registered')) {
-      console.error('   → Device must be registered first')
+      console.error('   Device must be registered first')
     } else if (error.message.includes('Device is not active')) {
-      console.error('   → Device has been deactivated')
+      console.error('   Device has been deactivated')
     }
 
     throw error
@@ -121,9 +121,9 @@ export async function logEventToChain(deviceId, eventData, eventType) {
 }
 
 /**
- * Register a new device on-chain
- * @param {string} deviceId - Device UUID
- * @param {string} guardianAddress - Guardian wallet address
+ * Register a new device onchain
+ * @param {string} deviceId  Device UUID
+ * @param {string} guardianAddress  Guardian wallet address
  * @returns {Promise<Object>} Transaction receipt
  */
 export async function registerDeviceOnChain(deviceId, guardianAddress) {
@@ -132,15 +132,15 @@ export async function registerDeviceOnChain(deviceId, guardianAddress) {
   }
 
   try {
-    console.log(`📝 Registering device on blockchain...`)
-    console.log(`   Device: ${deviceId}`)
-    console.log(`   Guardian: ${guardianAddress}`)
+    console.log(`[INFO] Registering device on blockchain...`)
+    console.log(`[INFO] Device: ${deviceId}`)
+    console.log(`[INFO] Guardian: ${guardianAddress}`)
 
     const tx = await contract.registerDevice(deviceId, guardianAddress)
-    console.log(`   Tx submitted: ${tx.hash}`)
+    console.log(`[INFO] Tx submitted: ${tx.hash}`)
 
     const receipt = await tx.wait()
-    console.log(`✅ Device registered on-chain (Block: ${receipt.blockNumber})`)
+    console.log(`[INFO] Device registered on-chain (Block: ${receipt.blockNumber})`)
 
     return {
       success: true,
@@ -149,10 +149,10 @@ export async function registerDeviceOnChain(deviceId, guardianAddress) {
     }
 
   } catch (error) {
-    console.error('❌ Failed to register device:', error.message)
+    console.error('[ERROR] Failed to register device:', error.message)
     
     if (error.message.includes('Device already registered')) {
-      console.log('   → Device already exists on-chain')
+      console.log('[INFO] Device already exists on-chain')
     }
 
     throw error
@@ -160,8 +160,8 @@ export async function registerDeviceOnChain(deviceId, guardianAddress) {
 }
 
 /**
- * Check if device is registered on-chain
- * @param {string} deviceId - Device UUID
+ * Check if device is registered onchain
+ * @param {string} deviceId  Device UUID
  * @returns {Promise<boolean>} True if registered
  */
 export async function isDeviceRegistered(deviceId) {
@@ -179,7 +179,7 @@ export async function isDeviceRegistered(deviceId) {
 
 /**
  * Get device info from blockchain
- * @param {string} deviceId - Device UUID
+ * @param {string} deviceId  Device UUID
  * @returns {Promise<Object>} Device information
  */
 export async function getDeviceInfo(deviceId) {
@@ -205,8 +205,8 @@ export async function getDeviceInfo(deviceId) {
 
 /**
  * Get recent events for a device from blockchain
- * @param {string} deviceId - Device UUID
- * @param {number} limit - Number of events to fetch
+ * @param {string} deviceId  Device UUID
+ * @param {number} limit  Number of events to fetch
  * @returns {Promise<Array>} Array of events
  */
 export async function getDeviceEventsFromChain(deviceId, limit = 10) {
@@ -231,7 +231,7 @@ export async function getDeviceEventsFromChain(deviceId, limit = 10) {
 }
 
 /**
- * Listen to blockchain events (real-time)
+ * Listen to blockchain events (realtime)
  */
 export function watchBlockchainEvents(callback) {
   if (!isInitialized || !contract) {
@@ -241,7 +241,7 @@ export function watchBlockchainEvents(callback) {
 
   // Listen for EventLogged events
   contract.on('EventLogged', (deviceId, guardian, dataHash, eventType, timestamp, event) => {
-    console.log(`🔔 Blockchain event detected:`)
+    console.log(`Blockchain event detected:`)
     console.log(`   Device: ${deviceId}`)
     console.log(`   Type: ${eventType}`)
     console.log(`   Hash: ${dataHash}`)
@@ -259,7 +259,7 @@ export function watchBlockchainEvents(callback) {
     }
   })
 
-  console.log('👂 Listening for blockchain events...')
+  console.log('[INFO] Listening for blockchain events...')
 }
 
 /**
@@ -287,7 +287,7 @@ export async function closeBlockchain() {
   }
   
   isInitialized = false
-  console.log('🔒 Blockchain connection closed')
+  console.log('Blockchain connection closed')
 }
 
 export default {

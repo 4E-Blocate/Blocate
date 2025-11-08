@@ -26,19 +26,40 @@ contract PatientMonitor {
         uint256 timestamp
     );
     
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner,
+        uint256 timestamp
+    );
+    
+    // ============ Modifiers ============
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "PatientMonitor: Caller is not owner");
+        _;
+    }
+    
     // ============ Constructor ============
     
     /**
-     * @notice Deploy all sub-contracts
+     * @notice Deploy all sub-contracts with verification
      */
     constructor() {
         owner = msg.sender;
         
         // Deploy DeviceRegistry
         deviceRegistry = new DeviceRegistry();
+        require(
+            address(deviceRegistry) != address(0),
+            "PatientMonitor: DeviceRegistry deployment failed"
+        );
         
         // Deploy EventLogger with reference to DeviceRegistry
         eventLogger = new EventLogger(address(deviceRegistry));
+        require(
+            address(eventLogger) != address(0),
+            "PatientMonitor: EventLogger deployment failed"
+        );
         
         emit ContractsDeployed(
             address(deviceRegistry),
@@ -76,12 +97,14 @@ contract PatientMonitor {
     function getGuardianDevices(
         address guardian
     ) external view returns (string[] memory) {
+        // Note: Returns unbounded array - use with pagination in frontend
         return deviceRegistry.getGuardianDevices(guardian);
     }
     
     function getPatientDevices(
         address patient
     ) external view returns (string[] memory) {
+        // Note: Returns unbounded array - use with pagination in frontend
         return deviceRegistry.getPatientDevices(patient);
     }
     
@@ -153,5 +176,27 @@ contract PatientMonitor {
         returns (address, address) 
     {
         return (address(deviceRegistry), address(eventLogger));
+    }
+    
+    // ============ Admin Functions ============
+    
+    /**
+     * @notice Transfer ownership of the contract
+     * @dev Only current owner can call
+     * @param newOwner Address of new owner
+     */
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "PatientMonitor: Invalid new owner");
+        address previousOwner = owner;
+        owner = newOwner;
+        
+        emit OwnershipTransferred(previousOwner, newOwner, block.timestamp);
+    }
+    
+    /**
+     * @dev Reject direct ETH transfers to prevent accidental loss
+     */
+    receive() external payable {
+        revert("PatientMonitor: ETH not accepted");
     }
 }
