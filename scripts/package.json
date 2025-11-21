@@ -1,0 +1,17 @@
+{
+  "type": "module",
+  "name": "4ebe-scripts",
+  "version": "1.0.0",
+  "description": "Test and deployment scripts for 4E-BE project",
+  "scripts": {
+    "deploy": "node deploy-local.js",
+    "test": "node test-full-stack.js",
+    "mock-register": "node mock-register-device.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ethers": "^6.7.1",
+    "mqtt": "^5.0.5",
+    "solc": "^0.8.30"
+  }
+}

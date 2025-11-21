@@ -35,6 +35,7 @@ interface IDeviceRegistry {
     );
     
     function registerDevice(string memory deviceId, address guardian) external;
+    function registerDeviceFor(string memory deviceId, address patient, address guardian) external;
     function changeGuardian(string memory deviceId, address newGuardian) external;
     function deactivateDevice(string memory deviceId) external;
     function getDevice(string memory deviceId) external view returns (Device memory);

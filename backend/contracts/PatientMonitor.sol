@@ -74,7 +74,7 @@ contract PatientMonitor {
         string memory deviceId,
         address guardian
     ) external {
-        deviceRegistry.registerDevice(deviceId, guardian);
+        deviceRegistry.registerDeviceFor(deviceId, msg.sender, guardian);
     }
     
     function changeGuardian(

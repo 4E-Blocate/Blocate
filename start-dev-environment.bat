@@ -6,7 +6,7 @@ echo.
 
 echo [1/4] Starting Ganache (Local Blockchain)...
 echo.
-start "Ganache Blockchain" cmd /k "ganache --port 8545 --deterministic && echo. && echo Ganache is running. Keep this window open! && pause"
+start "Ganache Blockchain" cmd /k "ganache --port 8545 --deterministic --chain.hardfork shanghai && echo. && echo Ganache is running with Shanghai hardfork support. Keep this window open! && pause"
 
 timeout /t 3 /nobreak >nul
 

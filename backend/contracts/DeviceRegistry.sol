@@ -62,6 +62,32 @@ contract DeviceRegistry is IDeviceRegistry {
         string memory deviceId,
         address guardian
     ) external override {
+        _registerDeviceFor(deviceId, msg.sender, guardian);
+    }
+    
+    /**
+     * @notice Register a device on behalf of a patient
+     * @dev Internal function to support both direct and delegated registration
+     * @param deviceId Unique device identifier
+     * @param patient Patient address
+     * @param guardian Guardian address
+     */
+    function registerDeviceFor(
+        string memory deviceId,
+        address patient,
+        address guardian
+    ) external {
+        _registerDeviceFor(deviceId, patient, guardian);
+    }
+    
+    /**
+     * @dev Internal registration logic
+     */
+    function _registerDeviceFor(
+        string memory deviceId,
+        address patient,
+        address guardian
+    ) internal {
         require(
             devices[deviceId].patient == address(0),
             "DeviceRegistry: Device already registered"
@@ -71,7 +97,7 @@ contract DeviceRegistry is IDeviceRegistry {
             "DeviceRegistry: Invalid guardian address"
         );
         require(
-            msg.sender != address(0),
+            patient != address(0),
             "DeviceRegistry: Invalid patient address"
         );
         require(
@@ -81,18 +107,18 @@ contract DeviceRegistry is IDeviceRegistry {
         
         devices[deviceId] = Device({
             deviceId: deviceId,
-            patient: msg.sender,
+            patient: patient,
             guardian: guardian,
             isActive: true,
             registeredAt: block.timestamp
         });
         
         guardianDevices[guardian].push(deviceId);
-        patientDevices[msg.sender].push(deviceId);
+        patientDevices[patient].push(deviceId);
         
         totalDevices++;
         
-        emit DeviceRegistered(deviceId, msg.sender, guardian, block.timestamp);
+        emit DeviceRegistered(deviceId, patient, guardian, block.timestamp);
     }
     
     /**
