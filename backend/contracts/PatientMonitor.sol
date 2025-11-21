@@ -72,9 +72,12 @@ contract PatientMonitor {
     
     function registerDevice(
         string memory deviceId,
-        address guardian
+        address guardian,
+        string memory fullName,
+        uint8 age,
+        string memory homeLocation
     ) external {
-        deviceRegistry.registerDeviceFor(deviceId, msg.sender, guardian);
+        deviceRegistry.registerDeviceFor(deviceId, msg.sender, guardian, fullName, age, homeLocation);
     }
     
     function changeGuardian(

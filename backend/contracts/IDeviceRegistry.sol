@@ -11,6 +11,9 @@ interface IDeviceRegistry {
         string deviceId;
         address patient;
         address guardian;
+        string fullName;
+        uint8 age;
+        string homeLocation;
         bool isActive;
         uint256 registeredAt;
     }
@@ -34,8 +37,8 @@ interface IDeviceRegistry {
         uint256 timestamp
     );
     
-    function registerDevice(string memory deviceId, address guardian) external;
-    function registerDeviceFor(string memory deviceId, address patient, address guardian) external;
+    function registerDevice(string memory deviceId, address guardian, string memory fullName, uint8 age, string memory homeLocation) external;
+    function registerDeviceFor(string memory deviceId, address patient, address guardian, string memory fullName, uint8 age, string memory homeLocation) external;
     function changeGuardian(string memory deviceId, address newGuardian) external;
     function deactivateDevice(string memory deviceId) external;
     function getDevice(string memory deviceId) external view returns (Device memory);

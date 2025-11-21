@@ -57,12 +57,18 @@ contract DeviceRegistry is IDeviceRegistry {
      * @dev Patient (msg.sender) registers their device and assigns a guardian
      * @param deviceId Unique device identifier (ESP32 UUID)
      * @param guardian Wallet address of the guardian
+     * @param fullName Patient's full name
+     * @param age Patient's age
+     * @param homeLocation Patient's home GPS coordinates "lat,long"
      */
     function registerDevice(
         string memory deviceId,
-        address guardian
+        address guardian,
+        string memory fullName,
+        uint8 age,
+        string memory homeLocation
     ) external override {
-        _registerDeviceFor(deviceId, msg.sender, guardian);
+        _registerDeviceFor(deviceId, msg.sender, guardian, fullName, age, homeLocation);
     }
     
     /**
@@ -71,13 +77,19 @@ contract DeviceRegistry is IDeviceRegistry {
      * @param deviceId Unique device identifier
      * @param patient Patient address
      * @param guardian Guardian address
+     * @param fullName Patient's full name
+     * @param age Patient's age
+     * @param homeLocation Patient's home GPS coordinates "lat,long"
      */
     function registerDeviceFor(
         string memory deviceId,
         address patient,
-        address guardian
+        address guardian,
+        string memory fullName,
+        uint8 age,
+        string memory homeLocation
     ) external {
-        _registerDeviceFor(deviceId, patient, guardian);
+        _registerDeviceFor(deviceId, patient, guardian, fullName, age, homeLocation);
     }
     
     /**
@@ -86,7 +98,10 @@ contract DeviceRegistry is IDeviceRegistry {
     function _registerDeviceFor(
         string memory deviceId,
         address patient,
-        address guardian
+        address guardian,
+        string memory fullName,
+        uint8 age,
+        string memory homeLocation
     ) internal {
         require(
             devices[deviceId].patient == address(0),
@@ -109,6 +124,9 @@ contract DeviceRegistry is IDeviceRegistry {
             deviceId: deviceId,
             patient: patient,
             guardian: guardian,
+            fullName: fullName,
+            age: age,
+            homeLocation: homeLocation,
             isActive: true,
             registeredAt: block.timestamp
         });

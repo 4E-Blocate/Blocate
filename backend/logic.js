@@ -1,7 +1,8 @@
 import { determineEventType } from './utils/crypto.js'
 import { interpretHealthData } from './aiClient.js'
 import { storeEvent } from './orbitdbClient.js'
-import { logEventToChain, isDeviceRegistered } from './tonBlockchain.js'
+import { logEventToChain, isDeviceRegistered, getDeviceInfo } from './tonBlockchain.js'
+import { calculateDistance } from './utils/geo.js'
 
 /**
  * Process incoming telemetry data from IoT device
@@ -27,7 +28,32 @@ export async function processTelemetry(payload) {
     }
 
     // Determine event type based on vitals
-    const eventType = determineEventType(bpm, temp, gps)
+    let eventType = determineEventType(bpm, temp, gps)
+    
+    // --- Geofencing Logic ---
+    if (registered) {
+        try {
+            // 1. Get "Home" location from blockchain
+            const deviceInfo = await getDeviceInfo(deviceId);
+            
+            if (deviceInfo.homeLocation && gps) {
+                // 2. Calculate distance
+                const distKm = calculateDistance(gps, deviceInfo.homeLocation);
+                console.log(`   Distance from home: ${distKm.toFixed(3)} km`);
+
+                // 3. Threshold check (e.g., 0.5km / 500 meters)
+                if (distKm > 0.5) {
+                    console.warn(`   ⚠️ PATIENT OUTSIDE GEOFENCE!`);
+                    // Override event type to alert guardian
+                    if (eventType === 'normal') eventType = 'alert';
+                }
+            }
+        } catch (err) {
+            console.warn('   Failed to check geofence:', err.message);
+        }
+    }
+    // -----------------------------
+
     console.log(`   Event type: ${eventType}`)
 
     // Get AI interpretation (optional)

@@ -9,9 +9,9 @@ let isInitialized = false
 
 // PatientMonitor contract ABI (essential functions only)
 const CONTRACT_ABI = [
-  "function registerDevice(string deviceId, address guardian) public",
+  "function registerDevice(string deviceId, address guardian, string fullName, uint8 age, string homeLocation) public",
   "function logEvent(string deviceId, bytes32 dataHash, string eventType) public",
-  "function getDevice(string deviceId) public view returns (tuple(string deviceId, address patient, address guardian, bool isActive, uint256 registeredAt))",
+  "function getDevice(string deviceId) public view returns (tuple(string deviceId, address patient, address guardian, string fullName, uint8 age, string homeLocation, bool isActive, uint256 registeredAt))",
   "function getDeviceEvents(string deviceId, uint256 limit) public view returns (tuple(string deviceId, bytes32 dataHash, address guardian, string eventType, uint256 timestamp)[])",
   "function isDeviceRegistered(string deviceId) public view returns (bool)",
   "function isDeviceActive(string deviceId) public view returns (bool)",
@@ -124,9 +124,12 @@ export async function logEventToChain(deviceId, eventData, eventType) {
  * Register a new device onchain
  * @param {string} deviceId  Device UUID
  * @param {string} guardianAddress  Guardian wallet address
+ * @param {string} fullName Patient's full name
+ * @param {number} age Patient's age
+ * @param {string} homeLocation Patient's home GPS coordinates "lat,long"
  * @returns {Promise<Object>} Transaction receipt
  */
-export async function registerDeviceOnChain(deviceId, guardianAddress) {
+export async function registerDeviceOnChain(deviceId, guardianAddress, fullName, age, homeLocation) {
   if (!isInitialized) {
     throw new Error('Blockchain not initialized')
   }
@@ -135,8 +138,10 @@ export async function registerDeviceOnChain(deviceId, guardianAddress) {
     console.log(`[INFO] Registering device on blockchain...`)
     console.log(`[INFO] Device: ${deviceId}`)
     console.log(`[INFO] Guardian: ${guardianAddress}`)
+    console.log(`[INFO] Patient: ${fullName} (${age})`)
+    console.log(`[INFO] Home: ${homeLocation}`)
 
-    const tx = await contract.registerDevice(deviceId, guardianAddress)
+    const tx = await contract.registerDevice(deviceId, guardianAddress, fullName, age, homeLocation)
     console.log(`[INFO] Tx submitted: ${tx.hash}`)
 
     const receipt = await tx.wait()
@@ -194,6 +199,9 @@ export async function getDeviceInfo(deviceId) {
       deviceId: device.deviceId,
       patient: device.patient,
       guardian: device.guardian,
+      fullName: device.fullName,
+      age: Number(device.age),
+      homeLocation: device.homeLocation,
       isActive: device.isActive,
       registeredAt: Number(device.registeredAt)
     }
