@@ -1,0 +1,193 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\DeviceRegistry.sol": {
+      "lastModificationDate": 1763717704887,
+      "contentHash": "7143abff5de178b42c8a51a06ef782e9",
+      "sourceName": "contracts/DeviceRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IDeviceRegistry.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "DeviceRegistry"
+      ]
+    },
+    "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\IDeviceRegistry.sol": {
+      "lastModificationDate": 1763717708356,
+      "contentHash": "8d04aef54299ab04bea83b6a2b337a27",
+      "sourceName": "contracts/IDeviceRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IDeviceRegistry"
+      ]
+    },
+    "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\PatientMonitor.sol": {
+      "lastModificationDate": 1763717705875,
+      "contentHash": "708453fd675aff8e639c13fd452d5337",
+      "sourceName": "contracts/PatientMonitor.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./DeviceRegistry.sol",
+        "./EventLogger.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "PatientMonitor"
+      ]
+    },
+    "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\EventLogger.sol": {
+      "lastModificationDate": 1762755064068,
+      "contentHash": "9e73351eab6c4d4c7a7a7ba322a29ea7",
+      "sourceName": "contracts/EventLogger.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IEventLogger.sol",
+        "./IDeviceRegistry.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "EventLogger"
+      ]
+    },
+    "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\IEventLogger.sol": {
+      "lastModificationDate": 1762316146090,
+      "contentHash": "73d07255394e67b07a192c3f43f06c23",
+      "sourceName": "contracts/IEventLogger.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IEventLogger"
+      ]
+    }
+  }
+}

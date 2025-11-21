@@ -1,6 +1,6 @@
 import { determineEventType } from './utils/crypto.js'
 import { interpretHealthData } from './aiClient.js'
-import { storeEvent } from './orbitdbClient.js'
+import { storeEvent } from './gunClient.js'
 import { logEventToChain, isDeviceRegistered, getDeviceInfo } from './tonBlockchain.js'
 import { calculateDistance } from './utils/geo.js'
 
@@ -77,9 +77,9 @@ export async function processTelemetry(payload) {
       processedAt: Date.now()
     }
 
-    // Store full data in OrbitDB
-    console.log(`Storing event in OrbitDB...`)
-    const orbitHash = await storeEvent(eventData)
+    // Store full data in GunDB
+    console.log(`Storing event in GunDB...`)
+    const storageId = await storeEvent(eventData)
 
     // Log hash to blockchain (if device is registered)
     let blockchainResult = null
@@ -99,7 +99,7 @@ export async function processTelemetry(payload) {
       eventType,
       aiInterpretation,
       storage: {
-        orbitdb: orbitHash,
+        dbId: storageId,
         blockchain: blockchainResult
       },
       timestamp: eventData.timestamp

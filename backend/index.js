@@ -3,7 +3,7 @@
 import { config, validateConfig } from './config.js'
 import { initBlockchain, closeBlockchain, getBlockchainStatus } from './tonBlockchain.js'
 import { initMQTT, closeMQTT, getMQTTStatus } from './mqttClient.js'
-import { initStorage, closeStorage, getStorageStatus, getDatabaseAddress } from './orbitdbClient.js'
+import { initStorage, closeStorage, getStorageStatus } from './gunClient.js'
 import { processTelemetry, processAlert, validateTelemetryData } from './logic.js'
 import { getAIStatus } from './aiClient.js'
 
@@ -54,7 +54,7 @@ async function initializeDePINNode() {
       console.log()
     }
 
-    // Initialize storage layer (OrbitDB + IPFS)
+    // Initialize storage layer (GunDB)
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('Stage 1: Decentralized Storage')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -83,12 +83,8 @@ async function initializeDePINNode() {
     const aiStatus = getAIStatus()
 
     console.log(`\nStorage:`)
-    console.log(`   IPFS: ${storageStatus.ipfsId ? 'Active' : 'Inactive'}`)
-    console.log(`   OrbitDB: ${storageStatus.orbitdbAddress ? 'Connected' : 'Not connected'}`)
-    if (storageStatus.orbitdbAddress) {
-      console.log(`   Address: ${storageStatus.orbitdbAddress}`)
-      console.log(`   Events stored: ${storageStatus.eventCount}`)
-    }
+    console.log(`   Engine: ${storageStatus.engine}`)
+    console.log(`   Status: ${storageStatus.initialized ? 'Active' : 'Inactive'}`)
 
     console.log(`\nBlockchain:`)
     console.log(`   Status: ${blockchainStatus.initialized ? 'Connected' : 'Not connected'}`)

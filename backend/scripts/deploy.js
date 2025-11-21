@@ -21,7 +21,9 @@ async function main() {
   console.log("PatientMonitor deployed to:", patientMonitorAddress);
 
   // Get sub-contract addresses
-  const [deviceRegistryAddress, eventLoggerAddress] = await patientMonitor.getContractAddresses();
+  // Note: We need to call the public variables since getContractAddresses might not exist in the new contract
+  const deviceRegistryAddress = await patientMonitor.deviceRegistry();
+  const eventLoggerAddress = await patientMonitor.eventLogger();
   
   console.log("DeviceRegistry deployed to:", deviceRegistryAddress);
   console.log("EventLogger deployed to:", eventLoggerAddress);
