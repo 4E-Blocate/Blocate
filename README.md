@@ -1,6 +1,11 @@
 # 🏥🩺 BLocate: Decentralized Health Monitoring
+<div align="center">
+	<img src="https://i.imgur.com/xNlL0xh.png" alt="BLocate Project Banner" style="max-width:1000px;width:100%;margin-bottom:18px;" />
+</div>
 
-A truly decentralized health monitoring system: ESP32 IoT sensors, blockchain, and a modern dashboard. Eliminates single points of failure and enables permissionless deployment.
+
+
+A decentralized health monitoring system using ESP32 IoT sensors, blockchain, and a modern dashboard. Eliminates single points of failure and enables permissionless deployment.
 
 ---
 
@@ -18,25 +23,31 @@ A truly decentralized health monitoring system: ESP32 IoT sensors, blockchain, a
 
 ---
 
-## 🛠️ Technologies Used
+
+## 🛠️ Tech Stack
 
 **Backend:**
 
-- Node.js (ES Modules)
-- Solidity 0.8.20 (Smart Contracts)
-- Hardhat
-- ethers.js v6
-- GunDB
-- MQTT.js
-- Google Gemini AI
+<p align="center">
+	<img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+	<img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" />
+	<img src="https://img.shields.io/badge/Hardhat-F7DF1E?style=for-the-badge&logo=ethereum&logoColor=black" />
+	<img src="https://img.shields.io/badge/ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
+	<img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
+	<img src="https://img.shields.io/badge/MQTT-660066?style=for-the-badge&logo=mqtt&logoColor=white" />
+	<img src="https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" />
+</p>
 
 **Frontend:**
 
-- Next.js (React)
-- TypeScript
-- Tailwind CSS
-- Ethers.js
-- GunDB
+<p align="center">
+	<img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
+	<img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+	<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+	<img src="https://img.shields.io/badge/TailwindCSS-0F172A?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8" />
+	<img src="https://img.shields.io/badge/Ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
+	<img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
+</p>
 
 ---
 
@@ -56,7 +67,7 @@ No REST API required — frontend reads directly from blockchain + GunDB!
 
 ---
 
-## 📋 5 Langkah Menjalankan Repository
+## 📋 5 Steps to Run the Repository
 
 ### 1️⃣ Install Dependencies Backend & Frontend
 
@@ -65,13 +76,13 @@ cd backend && npm install
 cd ../frontend && npm install
 ```
 
-### 2️⃣ Konfigurasi Environment Backend
+### 2️⃣ Configure Backend Environment
 
 ```bash
 cd ../backend
 cp .env.example .env
 
-# Edit .env dengan data berikut:
+# Edit the .env file with the following data:
 
 # NODE_ID=patient-guardian-node-1
 # NODE_ENV=development
@@ -93,7 +104,7 @@ cp .env.example .env
 # AI_FALLBACK_MESSAGE=AI Unavailable
 ```
 
-### 3️⃣ Jalankan MQTT Broker
+### 3️⃣ Run MQTT Broker
 
 ```bash
 # Windows
@@ -116,7 +127,7 @@ npm run dev
 ### 5️⃣ Test Data & Dashboard
 
 ```bash
-# Kirim data contoh ke MQTT (terminal baru):
+# Publish sample data to MQTT (new terminal):
 mosquitto_pub -h localhost -t "patient/test-001/telemetry" -m '{"deviceId":"test-001","bpm":75,"temp":36.5,"gps":"14.5995,120.9842","timestamp":1700000000}'
 # Buka dashboard di browser:
 http://localhost:3000
@@ -138,6 +149,22 @@ Blocate/
 ## 🤝 Contributing
 
 Pull requests and issues are welcome! Please follow conventional commit messages and ensure code is linted before submitting.
+
+---
+
+## 👥 Developer Team – 4E
+
+<div align="center">
+	<img src="https://i.imgur.com/COJXUwQ.png" alt="BLocate Development Team" style="max-width:950px;width:100%;margin:0 0 20px;" />
+	<table align="center" width="100%" style="table-layout:fixed;">
+		<tr>
+			<td align="center" width="25%"><b>J. David</b><br><i>Faculty of Engineering</i></td>
+			<td align="center" width="25%"><b>Hakim N.</b><br><i>Faculty of Computer Science</i></td>
+			<td align="center" width="25%"><b>Bryan H.</b><br><i>Faculty of Engineering</i></td>
+			<td align="center" width="25%"><b>Laura F.S.</b><br><i>Faculty of Engineering</i></td>
+		</tr>
+	</table>
+</div>
 
 ---
 
