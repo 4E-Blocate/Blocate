@@ -154,17 +154,19 @@ Pull requests and issues are welcome! Please follow conventional commit messages
 
 ## 👥 Developer Team – 4E
 
-<div align="center">
-	<img src="https://i.imgur.com/COJXUwQ.png" alt="BLocate Development Team" style="max-width:950px;width:100%;margin:0 0 20px;" />
-	<table align="center" width="100%" style="table-layout:fixed;">
-		<tr>
-			<td align="center" width="25%"><b>J. David</b><br><i>Faculty of Engineering</i></td>
-			<td align="center" width="25%"><b>Hakim N.</b><br><i>Faculty of Computer Science</i></td>
-			<td align="center" width="25%"><b>Bryan H.</b><br><i>Faculty of Engineering</i></td>
-			<td align="center" width="25%"><b>Laura F.S.</b><br><i>Faculty of Engineering</i></td>
-		</tr>
-	</table>
-</div>
+<table align="center" width="100%" style="table-layout:fixed;">
+	<tr>
+		<td colspan="4" align="center" style="padding:0 0 18px;">
+			<img src="https://i.imgur.com/COJXUwQ.png" alt="BLocate Development Team" style="max-width:950px;width:100%;" />
+		</td>
+	</tr>
+	<tr>
+		<td align="center" width="25%"><b>J. David</b><br><i>Faculty of Engineering</i></td>
+		<td align="center" width="25%"><b>Hakim N.</b><br><i>Faculty of Computer Science</i></td>
+		<td align="center" width="25%"><b>Bryan H.</b><br><i>Faculty of Engineering</i></td>
+		<td align="center" width="25%"><b>Laura F.S.</b><br><i>Faculty of Engineering</i></td>
+	</tr>
+</table>
 
 ---
 
