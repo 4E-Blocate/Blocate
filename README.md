@@ -1,227 +1,144 @@
-# 🏥 BLocate - A solution to monitor patients and the elderly
+# 🏥🩺 BLocate: Decentralized Health Monitoring
 
-A truly decentralized health monitoring system that connects ESP32 IoT sensors to blockchain, eliminating single points of failure and enabling permissionless deployment.
+A truly decentralized health monitoring system: ESP32 IoT sensors, blockchain, and a modern dashboard. Eliminates single points of failure and enables permissionless deployment.
 
 ---
 
-## Project Capabilities
+## 🚀 Project Overview
 
 **BLocate** enables real-time monitoring of patient vitals (heart rate, temperature, GPS location) through a fully decentralized architecture:
 
-- ✅ **Real-time Monitoring** - ESP32 sensors continuously track patient health metrics
-- ✅ **Smart Geofencing** - Alerts guardians when patients leave their home zone (0.5km radius)
-- ✅ **AI Health Interpretation** - Gemini AI provides instant analysis of vital signs
-- ✅ **Immutable Verification** - Event hashes stored on-chain for tamper-proof audit trails
-- ✅ **Decentralized Storage** - Full event data replicated across peer-to-peer network
-- ✅ **Guardian Alerts** - Automatic notifications for critical health events
----
-
-
-## Quick Start
-
-### Prerequisites
-- Node.js v18+
-- Mosquitto MQTT broker
-- Metamask wallet with Sepolia ETH
-- Alchemy API key (optional, for custom RPC)
-
-### 5 Steps to Run the Backend
-
-#### 1️⃣ Install Dependencies
-```bash
-cd backend
-npm install
-```
-
-#### 2️⃣ Configure Environment
-```bash
-cp .env.example .env
-# Edit .env with your keys:
-# - TON_RPC (use provided Sepolia RPC or your Alchemy URL)
-# - TON_PRIVATE_KEY (your wallet private key)
-# - TON_CONTRACT_ADDRESS (already deployed: 0xf0916175fDF2678f46cF9997352C1A68f2133F84)
-# - GEMINI_API_KEY (optional, for AI features)
-```
-
-#### 3️⃣ Start MQTT Broker
-```bash
-# Windows
-mosquitto -v
-
-# Mac/Linux
-brew install mosquitto && mosquitto -v
-```
-
-#### 4️⃣ Run the Backend Node
-```bash
-npm start
-```
-
-#### 5️⃣ Test with Sample Data
-```bash
-# In another terminal, publish test telemetry:
-mosquitto_pub -h localhost -t "patient/test-001/telemetry" -m '{"deviceId":"test-001","bpm":75,"temp":36.5,"gps":"14.5995,120.9842","timestamp":1700000000}'
-```
-
-**Backend will:**
-- ✅ Receive MQTT message
-- ✅ Analyze vitals with AI
-- ✅ Check geofence distance
-- ✅ Store full data in GunDB
-- ✅ Log hash to Sepolia blockchain
-
----
-
-## 🏗️ Architecture
-
-### DePIN Components
-
-| Component | Technology | Decentralization |
-|-----------|------------|------------------|
-| **IoT Sensors** | ESP32 (MQTT) | Anyone can deploy sensors |
-| **Data Storage** | GunDB (P2P Graph DB) | Peer-to-peer replication |
-| **Verification Layer** | Ethereum Sepolia (Smart Contracts) | Immutable on-chain proofs |
-| **AI Analysis** | Google Gemini API | Hybrid (centralized AI) |
-| **Geofencing** | Haversine Formula | Local calculation (no API) |
-| **Backend Nodes** | Node.js | Multiple independent operators |
-
-### Data Flow
-```
-ESP32 Sensor → MQTT → Backend Node → [AI Analysis + Geofence Check]
-                                   ↓
-                          GunDB (Full Data) + Blockchain (Hash)
-                                   ↓
-                          Frontend Dashboard (Direct Queries)
-```
-
-**No REST API required** - Frontend reads directly from blockchain + GunDB!
+- ✅ Real-time Monitoring (IoT sensors)
+- ✅ Smart Geofencing (auto alerts)
+- ✅ AI Health Interpretation (Gemini AI)
+- ✅ Immutable Blockchain Verification
+- ✅ Decentralized Storage (GunDB)
+- ✅ Guardian Alerts
+- ✅ Modern Frontend Dashboard
 
 ---
 
 ## 🛠️ Technologies Used
 
-### Backend Stack
-- **Node.js** (ES Modules)
-- **Solidity 0.8.20** (Smart Contracts)
-- **Hardhat** (Deployment & Testing)
-- **ethers.js v6** (Blockchain Interaction)
-- **GunDB** (Decentralized Graph Database)
-- **MQTT.js** (IoT Communication)
-- **Google Gemini AI** (Health Data Interpretation)
+**Backend:**
 
-### Smart Contracts
-- `PatientMonitor.sol` - Main entry point
-- `DeviceRegistry.sol` - Device + Guardian management
-- `EventLogger.sol` - Immutable event logging
+- Node.js (ES Modules)
+- Solidity 0.8.20 (Smart Contracts)
+- Hardhat
+- ethers.js v6
+- GunDB
+- MQTT.js
+- Google Gemini AI
 
-### Deployed on Sepolia Testnet
-- **Network**: Ethereum Sepolia
-- **Contract Address**: `0xf0916175fDF2678f46cF9997352C1A68f2133F84`
-- **View on Etherscan**: [Contract on Sepolia](https://sepolia.etherscan.io/address/0xf0916175fDF2678f46cF9997352C1A68f2133F84)
+**Frontend:**
 
----
-
-## 📋 Key Features
-
-### 1. **Patient Profile on Blockchain**
-Each device registration stores:
-- Patient's full name
-- Age
-- Home GPS coordinates (for geofencing)
-- Guardian wallet address
-
-### 2. **Intelligent Event Classification**
-- **Normal**: Vitals within healthy range
-- **Alert**: Minor abnormalities or geofence breach
-- **Critical**: Dangerous vital signs requiring immediate attention
-
-### 3. **Geofencing System**
-- Uses Haversine formula (pure math, no centralized API)
-- Calculates distance between current GPS and home location
-- Auto-alerts when patient exceeds 0.5km radius
-
-### 4. **Hybrid Decentralization**
-- **Fully Decentralized**: IoT messaging, data storage, verification, geofencing
-- **Centralized**: AI interpretation (Google Gemini API)
+- Next.js (React)
+- TypeScript
+- Tailwind CSS
+- Ethers.js
+- GunDB
 
 ---
 
-## 🎓 Smart Contract Functions
+## 🏗️ Architecture
 
-### Device Management
-```solidity
-registerDevice(deviceId, guardian, fullName, age, homeLocation)
-changeGuardian(deviceId, newGuardian)
-deactivateDevice(deviceId)
+![picture 0](https://i.imgur.com/Mj2zeHv.png)  
+
+![picture 2](https://i.imgur.com/ZvZmli8.png)  
+
+No REST API required — frontend reads directly from blockchain + GunDB!
+
+---
+
+## 👤 User Flow
+
+![picture 1](https://i.imgur.com/vAbo7eK.png)  
+
+---
+
+## 📋 5 Langkah Menjalankan Repository
+
+### 1️⃣ Install Dependencies Backend & Frontend
+
+```bash
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-### Event Logging
-```solidity
-logEvent(deviceId, dataHash, eventType)
-getDeviceEvents(deviceId, limit)
+### 2️⃣ Konfigurasi Environment Backend
+
+```bash
+cd ../backend
+cp .env.example .env
+
+# Edit .env dengan data berikut:
+
+# NODE_ID=patient-guardian-node-1
+# NODE_ENV=development
+
+# MQTT_BROKER=mqtt://localhost:1883
+# MQTT_USERNAME=
+# MQTT_PASSWORD=
+
+# TON_RPC=https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
+# TON_PRIVATE_KEY=your_wallet_private_key_here
+# TON_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
+
+# SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
+# PRIVATE_KEY=your_wallet_private_key_here
+
+# GEMINI_API_KEY=your_gemini_api_key_here
+# GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent
+# AI_ENABLED=true
+# AI_FALLBACK_MESSAGE=AI Unavailable
 ```
 
-### Queries
-```solidity
-getDevice(deviceId)
-isDeviceRegistered(deviceId)
+### 3️⃣ Jalankan MQTT Broker
+
+```bash
+# Windows
+mosquitto -v
+# Mac/Linux
+brew install mosquitto && mosquitto -v
+```
+
+### 4️⃣ Start Backend & Frontend
+
+```bash
+# Backend
+cd backend
+npm start
+# Frontend (new terminal)
+cd frontend
+npm run dev
+```
+
+### 5️⃣ Test Data & Dashboard
+
+```bash
+# Kirim data contoh ke MQTT (terminal baru):
+mosquitto_pub -h localhost -t "patient/test-001/telemetry" -m '{"deviceId":"test-001","bpm":75,"temp":36.5,"gps":"14.5995,120.9842","timestamp":1700000000}'
+# Buka dashboard di browser:
+http://localhost:3000
 ```
 
 ---
 
-## 📂 Project Structure
+## 📂 Directory Structure
 
+```txt
+Blocate/
+├── backend/   # Node.js backend, smart contracts, MQTT, GunDB
+├── frontend/  # Next.js dashboard
+└── README.md  # Root project info
 ```
-backend/
-├── contracts/          # Solidity smart contracts
-│   ├── PatientMonitor.sol
-│   ├── DeviceRegistry.sol
-│   ├── EventLogger.sol
-│   └── interfaces/
-├── scripts/            # Deployment scripts
-│   └── deploy.js
-├── utils/              # Helper utilities
-│   ├── crypto.js       # Hashing & event classification
-│   └── geo.js          # Geofencing (Haversine)
-├── index.js            # Main DePIN node entry point
-├── mqttClient.js       # IoT telemetry receiver
-├── gunClient.js        # Decentralized database
-├── tonBlockchain.js    # Smart contract interaction
-├── aiClient.js         # Gemini AI integration
-├── logic.js            # Business logic (geofence + AI)
-└── config.js           # Environment configuration
-```
-
----
-
-## 💡 Why DePIN?
-
-Traditional patient monitoring systems rely on centralized servers that can:
-- ❌ Fail completely during outages
-- ❌ Be manipulated by single entities
-- ❌ Require permission to deploy/access
-- ❌ Lock users into proprietary ecosystems
-
-**Patient Guardian DePIN solves this by:**
-- ✅ Distributing infrastructure across independent nodes
-- ✅ Storing immutable proofs on blockchain
-- ✅ Enabling permissionless sensor deployment
-- ✅ Eliminating vendor lock-in
-
----
-
-## 🔐 Security
-
-- ✅ Wallet-based authentication (no passwords)
-- ✅ SHA-256 hashing for data integrity
-- ✅ Private keys stored in `.env` (never committed)
-- ✅ Peer-to-peer encryption (GunDB)
-- ✅ On-chain verification (immutable audit trail)
 
 ---
 
 ## 🤝 Contributing
 
-This is a hackathon project. Feel free to fork and extend!
+Pull requests and issues are welcome! Please follow conventional commit messages and ensure code is linted before submitting.
 
-**Built with passion for decentralized healthcare**
+---
+
+**Built for decentralized healthcare.**
