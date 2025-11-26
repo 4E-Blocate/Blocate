@@ -7,7 +7,7 @@ import "./IDeviceRegistry.sol";
 /**
  * @title EventLogger
  * @dev Logs health event hashes on-chain for immutable verification
- * @notice Stores only SHA-256 hashes; full data lives in OrbitDB/IPFS
+ * @notice Stores only SHA-256 hashes; full data lives in GunDB (P2P storage)
  */
 contract EventLogger is IEventLogger {
     
@@ -61,7 +61,7 @@ contract EventLogger is IEventLogger {
     
     /**
      * @notice Log a health event on-chain
-     * @dev Stores only the hash; full data is in OrbitDB. Only patient/guardian can log.
+     * @dev Stores only the hash; full data is in GunDB. Only patient/guardian can log.
      * @param deviceId Device that generated the event
      * @param dataHash SHA-256 hash of full event data
      * @param eventType Event severity: "normal", "alert", or "critical"

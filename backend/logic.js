@@ -89,7 +89,7 @@ export async function processTelemetry(payload) {
         blockchainResult = await logEventToChain(deviceId, eventData, eventType)
       } catch (error) {
         console.error(`Blockchain logging failed: ${error.message}`)
-        // Continue anyway - data is still in OrbitDB
+        // Continue anyway - data is still in GunDB
       }
     }
 
@@ -131,8 +131,8 @@ export async function processAlert(payload) {
       processedAt: Date.now()
     }
 
-    // Store in OrbitDB
-    const orbitHash = await storeEvent(eventData)
+    // Store in GunDB
+    const gunDbId = await storeEvent(eventData)
 
     // Log to blockchain
     let blockchainResult = null
@@ -157,7 +157,7 @@ export async function processAlert(payload) {
       deviceId: payload.deviceId,
       eventType: 'critical',
       storage: {
-        orbitdb: orbitHash,
+        gundb: gunDbId,
         blockchain: blockchainResult
       }
     }

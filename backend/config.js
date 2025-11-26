@@ -13,13 +13,6 @@ export const config = {
   MQTT_USERNAME: process.env.MQTT_USERNAME || '',
   MQTT_PASSWORD: process.env.MQTT_PASSWORD || '',
 
-  // IPFS Configuration
-  IPFS_REPO: process.env.IPFS_REPO || './ipfs-repo',
-
-  // OrbitDB Configuration
-  ORBITDB_DIRECTORY: process.env.ORBITDB_DIRECTORY || './orbitdb-data',
-  ORBITDB_ADDRESS: process.env.ORBITDB_ADDRESS || '', // Shared address for multi-node
-
   // TON Blockchain
   TON_RPC: process.env.TON_RPC || 'https://testnet.toncenter.com/api/v2/jsonRPC',
   TON_PRIVATE_KEY: process.env.TON_PRIVATE_KEY || '',
