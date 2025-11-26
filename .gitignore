@@ -12,10 +12,6 @@ backend/.env
 backend/node_modules/
 node_modules/
 
-# Storage
-backend/orbitdb-data/
-backend/ipfs-repo/
-
 # Logs
 logs/
 *.log

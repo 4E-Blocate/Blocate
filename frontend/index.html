@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Guardian DePIN</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏥 Patient Guardian DePIN</h1>
+      <p class="subtitle">Decentralized Patient Monitoring System</p>
+    </header>
+
+    <!-- Wallet Connection -->
+    <section class="wallet-section">
+      <div id="walletStatus" class="disconnected">
+        <span class="status-icon">❌</span>
+        <span class="status-text">Wallet Not Connected</span>
+      </div>
+      <button id="connectBtn" class="btn btn-primary">Connect MetaMask</button>
+    </section>
+
+    <!-- Register Device -->
+    <section class="card">
+      <h2>📱 Register New Device</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label>Device ID</label>
+          <input type="text" id="deviceId" placeholder="e.g., patient-001" required>
+        </div>
+        <div class="form-group">
+          <label>Patient Name</label>
+          <input type="text" id="patientName" placeholder="e.g., John Doe" required>
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <input type="number" id="age" placeholder="e.g., 65" min="1" max="150" required>
+        </div>
+        <div class="form-group">
+          <label>Guardian Wallet Address</label>
+          <input type="text" id="guardianAddress" placeholder="0x... (leave empty to use your wallet)">
+          <small>Optional: Enter a different wallet for the guardian, or leave empty to use your own wallet</small>
+        </div>
+        <div class="form-group">
+          <label>Home Location (GPS)</label>
+          <input type="text" id="homeGPS" placeholder="e.g., 14.5995,120.9842" required>
+          <small>Format: latitude,longitude</small>
+        </div>
+        <button type="submit" class="btn btn-success">Register Device</button>
+      </form>
+    </section>
+
+    <!-- View Device & Events -->
+    <section class="card">
+      <h2>🔍 View Device Information</h2>
+      <div class="form-group">
+        <label>Device ID</label>
+        <input type="text" id="queryDeviceId" placeholder="e.g., patient-001">
+      </div>
+      <button id="getDeviceBtn" class="btn btn-primary">Get Device Info</button>
+      <button id="getEventsBtn" class="btn btn-secondary">Get Events</button>
+      
+      <div id="deviceInfo" class="result-box"></div>
+      <div id="eventsOutput" class="result-box"></div>
+    </section>
+
+    <!-- Contract Info -->
+    <section class="card contract-info">
+      <h3>📄 Contract Information</h3>
+      <div class="info-row">
+        <strong>Network:</strong> <span id="networkName">-</span>
+      </div>
+      <div class="info-row">
+        <strong>Contract Address:</strong> 
+        <code id="contractAddress">Loading...</code>
+      </div>
+    </section>
+
+    <footer>
+      <p>Built with ❤️ for decentralized healthcare</p>
+    </footer>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

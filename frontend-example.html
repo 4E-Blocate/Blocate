@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Patient Guardian - Frontend Demo</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    .connected { color: green; }
+    .disconnected { color: red; }
+    input { margin: 5px; padding: 8px; width: 300px; }
+  </style>
+</head>
+<body>
+  <h1>🏥 Patient Guardian DePIN</h1>
+  
+  <div id="walletStatus" class="disconnected">❌ Wallet Not Connected</div>
+  <button onclick="connectWallet()">Connect MetaMask</button>
+  <br><br>
+
+  <h2>Register Device</h2>
+  <input id="deviceId" placeholder="Device ID (e.g., device-001)"><br>
+  <input id="patientName" placeholder="Patient Name"><br>
+  <input id="age" placeholder="Age" type="number"><br>
+  <input id="homeGPS" placeholder="Home GPS (lat,lng)"><br>
+  <button onclick="registerDevice()">Register Device</button>
+  <br><br>
+
+  <h2>View Device Events</h2>
+  <input id="queryDeviceId" placeholder="Device ID"><br>
+  <button onclick="getEvents()">Get Events</button>
+  <div id="eventsOutput"></div>
+
+  <script>
+    const CONTRACT_ADDRESS = "0xf0916175fDF2678f46cF9997352C1A68f2133F84"; // Your deployed contract
+    
+    // Minimal ABI - just the functions we need
+    const ABI = [
+      "function registerDevice(string deviceId, address guardian, string fullName, uint8 age, string homeLocation)",
+      "function getDevice(string deviceId) view returns (tuple(address patient, address guardian, string fullName, uint8 age, string homeLocation, uint256 registeredAt, bool isActive))",
+      "function getDeviceEvents(string deviceId, uint256 limit) view returns (tuple(string deviceId, address guardian, bytes32 dataHash, string eventType, uint256 timestamp)[])"
+    ];
+
+    let provider, signer, contract, userAddress;
+
+    async function connectWallet() {
+      try {
+        // Request account access
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        
+        // Create contract instance with signer (for write operations)
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+        
+        document.getElementById('walletStatus').innerHTML = 
+          `✅ Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+        document.getElementById('walletStatus').className = 'connected';
+        
+        console.log("Connected:", userAddress);
+      } catch (error) {
+        alert("Failed to connect wallet: " + error.message);
+      }
+    }
+
+    async function registerDevice() {
+      if (!contract) {
+        alert("Please connect wallet first!");
+        return;
+      }
+
+      const deviceId = document.getElementById('deviceId').value;
+      const patientName = document.getElementById('patientName').value;
+      const age = document.getElementById('age').value;
+      const homeGPS = document.getElementById('homeGPS').value;
+
+      if (!deviceId || !patientName || !age || !homeGPS) {
+        alert("Please fill all fields!");
+        return;
+      }
+
+      try {
+        console.log("Registering device...");
+        
+        // This will open MetaMask for user to sign
+        const tx = await contract.registerDevice(
+          deviceId,
+          userAddress, // Guardian is the connected wallet
+          patientName,
+          parseInt(age),
+          homeGPS
+        );
+        
+        alert("Transaction sent! Hash: " + tx.hash);
+        console.log("Waiting for confirmation...");
+        
+        await tx.wait();
+        alert("✅ Device registered successfully!");
+        
+      } catch (error) {
+        console.error(error);
+        alert("Registration failed: " + error.message);
+      }
+    }
+
+    async function getEvents() {
+      if (!contract) {
+        alert("Please connect wallet first!");
+        return;
+      }
+
+      const deviceId = document.getElementById('queryDeviceId').value;
+      if (!deviceId) {
+        alert("Please enter device ID!");
+        return;
+      }
+
+      try {
+        console.log("Fetching events for:", deviceId);
+        
+        // Get device info first
+        const device = await contract.getDevice(deviceId);
+        console.log("Device:", device);
+        
+        // Get events (read-only, no gas cost)
+        const events = await contract.getDeviceEvents(deviceId, 10);
+        console.log("Events:", events);
+        
+        let output = `<h3>Device: ${device.fullName} (Age: ${device.age})</h3>`;
+        output += `<p>Guardian: ${device.guardian}</p>`;
+        output += `<h4>Recent Events (${events.length}):</h4>`;
+        
+        events.forEach((event, i) => {
+          output += `<div style="border: 1px solid #ccc; padding: 10px; margin: 5px;">
+            <strong>Event ${i + 1}</strong><br>
+            Type: ${event.eventType}<br>
+            Hash: ${event.dataHash}<br>
+            Timestamp: ${new Date(event.timestamp * 1000).toLocaleString()}<br>
+          </div>`;
+        });
+        
+        document.getElementById('eventsOutput').innerHTML = output || "No events found";
+        
+      } catch (error) {
+        console.error(error);
+        alert("Failed to fetch events: " + error.message);
+      }
+    }
+
+    // Check if MetaMask is installed
+    if (typeof window.ethereum === 'undefined') {
+      document.body.innerHTML = '<h1>⚠️ Please install MetaMask to use this app</h1>';
+    }
+  </script>
+</body>
+</html>
