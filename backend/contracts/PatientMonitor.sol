@@ -123,6 +123,18 @@ contract PatientMonitor {
         return deviceRegistry.isDeviceActive(deviceId);
     }
     
+    // ============ Guardian Profile Management (Delegated) ============
+    
+    function setGuardianName(string memory name) external {
+        deviceRegistry.setGuardianName(name);
+    }
+    
+    function getGuardianName(
+        address guardian
+    ) external view returns (string memory) {
+        return deviceRegistry.getGuardianName(guardian);
+    }
+    
     // ============ Event Logging (Delegated) ============
     
     function logEvent(

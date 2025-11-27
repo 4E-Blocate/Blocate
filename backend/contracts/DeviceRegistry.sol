@@ -21,6 +21,9 @@ contract DeviceRegistry is IDeviceRegistry {
     /// @dev Mapping from patient address to their device IDs
     mapping(address => string[]) private patientDevices;
     
+    /// @dev Mapping from guardian address to their display name
+    mapping(address => string) public guardianNames;
+    
     /// @dev Total number of registered devices
     uint256 public totalDevices;
     
@@ -261,6 +264,37 @@ contract DeviceRegistry is IDeviceRegistry {
         string memory deviceId
     ) external view returns (address) {
         return devices[deviceId].patient;
+    }
+    
+    /**
+     * @notice Set display name for guardian
+     * @dev Guardian can set their own display name to be shown across all devices
+     * @param name Display name (e.g., "Dr. Smith", "Mom", "John Doe")
+     */
+    function setGuardianName(string memory name) external {
+        require(
+            bytes(name).length > 0,
+            "DeviceRegistry: Name cannot be empty"
+        );
+        require(
+            bytes(name).length <= 50,
+            "DeviceRegistry: Name too long (max 50 chars)"
+        );
+        
+        guardianNames[msg.sender] = name;
+        
+        emit GuardianNameSet(msg.sender, name, block.timestamp);
+    }
+    
+    /**
+     * @notice Get guardian's display name
+     * @param guardian Guardian wallet address
+     * @return Display name or empty string if not set
+     */
+    function getGuardianName(
+        address guardian
+    ) external view returns (string memory) {
+        return guardianNames[guardian];
     }
     
     /**

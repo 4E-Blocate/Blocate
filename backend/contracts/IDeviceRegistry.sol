@@ -37,6 +37,12 @@ interface IDeviceRegistry {
         uint256 timestamp
     );
     
+    event GuardianNameSet(
+        address indexed guardian,
+        string name,
+        uint256 timestamp
+    );
+    
     function registerDevice(string memory deviceId, address guardian, string memory fullName, uint8 age, string memory homeLocation) external;
     function registerDeviceFor(string memory deviceId, address patient, address guardian, string memory fullName, uint8 age, string memory homeLocation) external;
     function changeGuardian(string memory deviceId, address newGuardian) external;
@@ -44,4 +50,6 @@ interface IDeviceRegistry {
     function getDevice(string memory deviceId) external view returns (Device memory);
     function isDeviceRegistered(string memory deviceId) external view returns (bool);
     function isDeviceActive(string memory deviceId) external view returns (bool);
+    function setGuardianName(string memory name) external;
+    function getGuardianName(address guardian) external view returns (string memory);
 }

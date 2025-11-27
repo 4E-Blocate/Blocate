@@ -15,8 +15,11 @@ const CONTRACT_ABI = [
   "function getDeviceEvents(string deviceId, uint256 limit) public view returns (tuple(string deviceId, bytes32 dataHash, address guardian, string eventType, uint256 timestamp)[])",
   "function isDeviceRegistered(string deviceId) public view returns (bool)",
   "function isDeviceActive(string deviceId) public view returns (bool)",
+  "function setGuardianName(string name) public",
+  "function getGuardianName(address guardian) public view returns (string)",
   "event DeviceRegistered(string indexed deviceId, address indexed patient, address indexed guardian, uint256 timestamp)",
-  "event EventLogged(string indexed deviceId, address indexed guardian, bytes32 dataHash, string eventType, uint256 timestamp)"
+  "event EventLogged(string indexed deviceId, address indexed guardian, bytes32 dataHash, string eventType, uint256 timestamp)",
+  "event GuardianNameSet(address indexed guardian, string name, uint256 timestamp)"
 ]
 
 /**
@@ -298,6 +301,53 @@ export async function closeBlockchain() {
   console.log('Blockchain connection closed')
 }
 
+/**
+ * Set guardian display name
+ * @param {string} name  Display name for the guardian
+ * @returns {Promise<boolean>}
+ */
+export async function setGuardianName(name) {
+  if (!isInitialized) {
+    console.log('[ERROR] Blockchain not initialized')
+    return false
+  }
+
+  try {
+    console.log(`[INFO] Setting guardian name: ${name}`)
+    
+    const tx = await contract.setGuardianName(name)
+    console.log(`[INFO] Transaction sent: ${tx.hash}`)
+    
+    const receipt = await tx.wait()
+    console.log(`[INFO] Guardian name set successfully (Block: ${receipt.blockNumber})`)
+    
+    return true
+  } catch (error) {
+    console.error('[ERROR] Failed to set guardian name:', error.message)
+    return false
+  }
+}
+
+/**
+ * Get guardian display name
+ * @param {string} guardianAddress  Guardian wallet address
+ * @returns {Promise<string|null>}
+ */
+export async function getGuardianName(guardianAddress) {
+  if (!isInitialized) {
+    console.log('[ERROR] Blockchain not initialized')
+    return null
+  }
+
+  try {
+    const name = await contract.getGuardianName(guardianAddress)
+    return name || null
+  } catch (error) {
+    console.error('[ERROR] Failed to get guardian name:', error.message)
+    return null
+  }
+}
+
 export default {
   initBlockchain,
   logEventToChain,
@@ -307,5 +357,7 @@ export default {
   getDeviceEventsFromChain,
   watchBlockchainEvents,
   getBlockchainStatus,
-  closeBlockchain
+  closeBlockchain,
+  setGuardianName,
+  getGuardianName
 }
