@@ -99,7 +99,15 @@ export default function PatientPage() {
           {/* List of Patients */}
           <div className="flex-1 text-white space-y-6 overflow-auto">
             {payload.map((data, index) => (
-              <div className="flex gap-6 border-4 relative border-[#003552] bg-[#115276] rounded-3xl py-5 px-12">
+              <div
+                key={index}
+                className="flex gap-6 border-4 relative border-[#003552] bg-[#115276] rounded-3xl py-5 px-12"
+              >
+                {/* Number */}
+                <div className="text-xl font-medium absolute top-4 left-4">
+                  #{data.no}
+                </div>
+
                 {/* Picture */}
                 <div className="relative size-30 z-10 overflow-hidden rounded-full">
                   <Image src={data.img} alt="profile" fill />
