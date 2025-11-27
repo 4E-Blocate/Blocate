@@ -1,7 +1,10 @@
 import { History, Home, LogOut, ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const Sidebar = ({ path }: { path: string }) => {
+  const router = useRouter();
+
   const payload = {
     name: "Jesaya David",
     role: "Guardian",
@@ -27,33 +30,33 @@ const Sidebar = ({ path }: { path: string }) => {
 
       {/* Navigation */}
       <div className="w-full space-y-2 my-4">
-        <a
-          href="patient"
+        <button
+          onClick={() => router.push("/patient")}
           className={`${
             path.startsWith("/patient") && "bg-white/20"
           } w-full flex gap-3 items-center px-4 py-3 rounded-lg`}
         >
           <Home />
           Home
-        </a>
-        <a
-          href="history"
+        </button>
+        <button
+          onClick={() => router.push("/history")}
           className={`${
             path.startsWith("/history") && "bg-white/20"
           } w-full flex gap-3 items-center px-4 py-3 rounded-lg`}
         >
           <History />
           History
-        </a>
-        <a
-          href="product"
+        </button>
+        <button
+          onClick={() => router.push("/product")}
           className={`${
             path.startsWith("/product") && "bg-white/20"
           } w-full flex gap-3 items-center px-4 py-3 rounded-lg`}
         >
           <ShoppingBag />
           Our Product
-        </a>
+        </button>
       </div>
 
       {/* Logout Button */}
