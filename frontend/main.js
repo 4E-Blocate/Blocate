@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 
 // Configuration - UPDATE THIS AFTER DEPLOYMENT!
 const CONFIG = {
-  CONTRACT_ADDRESS: "0xDef80349B405f4AEBC83B2ccB360F71a142E13bA", // Replace with your deployed address
+  CONTRACT_ADDRESS: "0xF9C608cD2E5Ae512C93C2597aC86764c99C9021C", // Replace with your deployed address
   SEPOLIA_CHAIN_ID: "0xaa36a7", // 11155111 in decimal
   SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo", // Public RPC for fallback
   GUNDB_PEERS: ['http://localhost:8765/gun'] // GunDB relay server from backend
@@ -76,6 +76,8 @@ const CONTRACT_ABI = [
   "function logEvent(string deviceId, bytes32 dataHash, string eventType)",
   "function getGuardianDevices(address guardian) view returns (string[])",
   "function getPatientDevices(address patient) view returns (string[])",
+  "function setGuardianName(string name)",
+  "function getGuardianName(address guardian) view returns (string)",
   "function deviceRegistry() view returns (address)",
   "function eventLogger() view returns (address)"
 ];
@@ -100,6 +102,9 @@ const eventsOutput = document.getElementById('eventsOutput');
 const multiDeviceOutput = document.getElementById('multiDeviceOutput');
 const contractAddress = document.getElementById('contractAddress');
 const networkName = document.getElementById('networkName');
+const setGuardianNameBtn = document.getElementById('setGuardianNameBtn');
+const guardianNameInput = document.getElementById('guardianNameInput');
+const guardianNameStatus = document.getElementById('guardianNameStatus');
 
 // Initialize
 init();
@@ -126,6 +131,7 @@ function init() {
   getEventsBtn.addEventListener('click', getDeviceEvents);
   getMyDevicesBtn.addEventListener('click', getMyDevices);
   getMyPatientsBtn.addEventListener('click', getMyPatients);
+  setGuardianNameBtn.addEventListener('click', handleSetGuardianName);
 
   // Listen for account changes
   window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -256,9 +262,30 @@ async function connectWallet() {
     console.log('Connected to wallet:', userAddress);
     console.log('Contract:', CONFIG.CONTRACT_ADDRESS);
 
+    // Load current guardian name if set
+    await loadCurrentGuardianName();
+
   } catch (error) {
     console.error('Connection error:', error);
     alert('Failed to connect wallet: ' + error.message);
+  }
+}
+
+async function loadCurrentGuardianName() {
+  try {
+    const currentName = await contract.getGuardianName(userAddress);
+    if (currentName && currentName.trim() !== '') {
+      guardianNameInput.placeholder = `Current: ${currentName}`;
+      guardianNameStatus.innerHTML = `
+        <div class="info-message">
+          <p><strong>Your Current Guardian Name:</strong> ${currentName}</p>
+          <p><small>Enter a new name above to update it.</small></p>
+        </div>
+      `;
+      guardianNameStatus.classList.add('show');
+    }
+  } catch (error) {
+    console.error('Error loading guardian name:', error);
   }
 }
 
@@ -296,6 +323,19 @@ function disconnectWallet() {
   console.log('Wallet disconnected');
 }
 
+// Helper function to get guardian display name
+async function getGuardianDisplayName(guardianAddress) {
+  try {
+    const name = await contract.getGuardianName(guardianAddress);
+    if (name && name.trim() !== '') {
+      return `${name} (${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)})`;
+    }
+    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+  } catch (error) {
+    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+  }
+}
+
 async function getMyDevices() {
   if (!contract) {
     alert('Please connect your wallet first!');
@@ -325,6 +365,7 @@ async function getMyDevices() {
       try {
         const device = await contract.getDevice(deviceId);
         const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
+        const guardianDisplay = await getGuardianDisplayName(device.guardian);
         
         html += `
           <div class="device-card">
@@ -336,7 +377,7 @@ async function getMyDevices() {
             </div>
             <div class="device-details" style="color: navy !important;">
               <div><strong>Patient:</strong> ${device.fullName} (${device.age} years)</div>
-              <div><strong>Guardian:</strong> ${device.guardian.substring(0, 6)}...${device.guardian.substring(38)}</div>
+              <div><strong>Guardian:</strong> ${guardianDisplay}</div>
               <div><strong>Home:</strong> ${device.homeLocation}</div>
               <div><strong>Registered:</strong> ${registeredDate}</div>
             </div>
@@ -649,5 +690,65 @@ async function getDeviceEvents() {
   } finally {
     getEventsBtn.disabled = false;
     getEventsBtn.textContent = 'Get Events';
+  }
+}
+
+async function handleSetGuardianName() {
+  if (!contract) {
+    alert('Please connect your wallet first!');
+    return;
+  }
+
+  const name = guardianNameInput.value.trim();
+  if (!name) {
+    alert('Please enter a display name');
+    return;
+  }
+
+  if (name.length > 50) {
+    alert('Name is too long (max 50 characters)');
+    return;
+  }
+
+  try {
+    setGuardianNameBtn.disabled = true;
+    setGuardianNameBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
+
+    const tx = await contract.setGuardianName(name);
+    console.log('Transaction sent:', tx.hash);
+
+    setGuardianNameBtn.textContent = 'Waiting for confirmation...';
+    
+    const receipt = await tx.wait();
+    console.log('Transaction confirmed:', receipt);
+
+    guardianNameStatus.innerHTML = `
+      <div class="success-message">
+        <h4>✅ Guardian Name Set Successfully!</h4>
+        <p><strong>Your Display Name:</strong> ${name}</p>
+        <p><strong>Wallet Address:</strong> ${userAddress}</p>
+        <p>Patients will now see "${name}" instead of just your wallet address.</p>
+        <small>Transaction: ${tx.hash}</small>
+      </div>
+    `;
+    guardianNameStatus.classList.add('show');
+
+    // Clear input
+    guardianNameInput.value = '';
+
+  } catch (error) {
+    console.error('Error setting guardian name:', error);
+    
+    let errorMsg = 'Failed to set guardian name: ';
+    if (error.code === 'ACTION_REJECTED') {
+      errorMsg += 'Transaction was rejected by user';
+    } else {
+      errorMsg += error.message;
+    }
+    
+    alert(errorMsg);
+  } finally {
+    setGuardianNameBtn.disabled = false;
+    setGuardianNameBtn.textContent = 'Set My Name';
   }
 }
