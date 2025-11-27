@@ -22,10 +22,10 @@ export default function Signup() {
     };
 
     return (
-        <div className="min-h-screen w-full flex bg-gray-50 font-sans">
+        <div className="min-h-screen w-full">
 
             {/* Left Panel: Branding & Pattern (Hidden on mobile, visible on medium screens and up) */}
-            <div className="hidden md:flex md:w-1/2 bg-[#02476D] relative flex-col items-center justify-center p-12 overflow-hidden text-white">
+            <div className="h-screen hidden md:flex md:w-1/2 bg-[#02476D] fixed top-0 left-0 flex-col items-center justify-center p-12 overflow-hidden text-white z-10">
 
                 <div className="absolute inset-0">
                     <Image
@@ -41,7 +41,7 @@ export default function Signup() {
                 <div className="relative z-10 flex flex-col items-center animate-fade-in-up">
                     {/* Main Large Logo */}
                     <Image
-                        src="/logo_blocate.png"
+                        src="/logo.png"
                         alt="B-Locate Logo"
                         width={250}
                         height={250}
@@ -52,13 +52,13 @@ export default function Signup() {
             </div>
 
             {/* Right Panel: Signup Form */}
-            <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-12 bg-white overflow-y-auto">
+            <div className="w-full md:w-1/2 md:ml-[50%] min-h-screen flex items-center justify-center p-6 md:p-12 bg-white">
                 <div className="w-full max-w-md space-y-6">
 
                     {/* Mobile Logo (Visible only on small screens) */}
                     <div className="flex md:hidden flex-col items-center mb-8">
                         <Image
-                            src="/logo_blocate.png"
+                            src="/logo.png"
                             alt="B-Locate Logo"
                             width={80} // Smaller size for mobile
                             height={80}
@@ -69,7 +69,7 @@ export default function Signup() {
                     {/* Form Header (Desktop) */}
                     <div className="hidden md:flex items-center justify-center gap-3 mb-8">
                         <Image
-                            src="/logo_blocate.png"
+                            src="/logo.png"
                             alt="B-Locate Logo"
                             width={90}
                             height={90}
