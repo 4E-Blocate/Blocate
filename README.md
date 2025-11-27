@@ -1,9 +1,8 @@
 # 🏥🩺 BLocate: Decentralized Health Monitoring
+
 <div align="center">
-	<img src="https://i.imgur.com/xNlL0xh.png" alt="BLocate Project Banner" style="max-width:1000px;width:100%;margin-bottom:18px;" />
+ <img src="https://i.imgur.com/xNlL0xh.png" alt="BLocate Project Banner" style="max-width:1000px;width:100%;margin-bottom:18px;" />
 </div>
-
-
 
 A decentralized health monitoring system using ESP32 IoT sensors, blockchain, and a modern dashboard. Eliminates single points of failure and enables permissionless deployment.
 
@@ -23,30 +22,29 @@ A decentralized health monitoring system using ESP32 IoT sensors, blockchain, an
 
 ---
 
-
 ## 🛠️ Tech Stack
 
 **Backend:**
 
 <p align="center">
-	<img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
-	<img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" />
-	<img src="https://img.shields.io/badge/Hardhat-F7DF1E?style=for-the-badge&logo=ethereum&logoColor=black" />
-	<img src="https://img.shields.io/badge/ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
-	<img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
-	<img src="https://img.shields.io/badge/MQTT-660066?style=for-the-badge&logo=mqtt&logoColor=white" />
-	<img src="https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" />
+ <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+ <img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" />
+ <img src="https://img.shields.io/badge/Hardhat-F7DF1E?style=for-the-badge&logo=ethereum&logoColor=black" />
+ <img src="https://img.shields.io/badge/ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
+ <img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
+ <img src="https://img.shields.io/badge/MQTT-660066?style=for-the-badge&logo=mqtt&logoColor=white" />
+ <img src="https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" />
 </p>
 
 **Frontend:**
 
 <p align="center">
-	<img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
-	<img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
-	<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-	<img src="https://img.shields.io/badge/TailwindCSS-0F172A?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8" />
-	<img src="https://img.shields.io/badge/Ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
-	<img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
+ <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
+ <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+ <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+ <img src="https://img.shields.io/badge/TailwindCSS-0F172A?style=for-the-badge&logo=tailwindcss&logoColor=38BDF8" />
+ <img src="https://img.shields.io/badge/Ethers.js-121D33?style=for-the-badge&logo=ethereum&logoColor=white" />
+ <img src="https://img.shields.io/badge/GunDB-000000?style=for-the-badge&logo=database&logoColor=white" />
 </p>
 
 ---
@@ -155,17 +153,17 @@ Pull requests and issues are welcome! Please follow conventional commit messages
 ## 👥 Developer Team – 4E
 
 <table align="center" width="100%" style="table-layout:fixed;">
-	<tr>
-		<td colspan="4" align="center" style="padding:0 0 18px;">
-			<img src="https://i.imgur.com/COJXUwQ.png" alt="BLocate Development Team" style="max-width:950px;width:100%;" />
-		</td>
-	</tr>
-	<tr>
-		<td align="center" width="25%"><b>J. David</b><br><i>Faculty of Engineering</i></td>
-		<td align="center" width="25%"><b>Hakim N.</b><br><i>Faculty of Computer Science</i></td>
-		<td align="center" width="25%"><b>Bryan H.</b><br><i>Faculty of Engineering</i></td>
-		<td align="center" width="25%"><b>Laura F.S.</b><br><i>Faculty of Engineering</i></td>
-	</tr>
+ <tr>
+  <td colspan="4" align="center" style="padding:0 0 18px;">
+   <img src="https://i.imgur.com/COJXUwQ.png" alt="BLocate Development Team" style="max-width:950px;width:100%;" />
+  </td>
+ </tr>
+ <tr>
+  <td align="center" width="25%"><b>J. David</b><br><i>Faculty of Engineering</i></td>
+  <td align="center" width="25%"><b>Hakim N.</b><br><i>Faculty of Computer Science</i></td>
+  <td align="center" width="25%"><b>Bryan H.</b><br><i>Faculty of Engineering</i></td>
+  <td align="center" width="25%"><b>Laura F.S.</b><br><i>Faculty of Engineering</i></td>
+ </tr>
 </table>
 
 ---
