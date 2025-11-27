@@ -70,9 +70,12 @@ const CONTRACT_ABI = [
   "function registerDevice(string deviceId, address guardian, string fullName, uint8 age, string homeLocation)",
   "function getDevice(string deviceId) view returns (tuple(string deviceId, address patient, address guardian, string fullName, uint8 age, string homeLocation, bool isActive, uint256 registeredAt))",
   "function getDeviceEvents(string deviceId, uint256 limit) view returns (tuple(string deviceId, bytes32 dataHash, address guardian, string eventType, uint256 timestamp)[])",
+  "function getDeviceEventCount(string deviceId) view returns (uint256)",
   "function isDeviceRegistered(string deviceId) view returns (bool)",
   "function isDeviceActive(string deviceId) view returns (bool)",
   "function logEvent(string deviceId, bytes32 dataHash, string eventType)",
+  "function getGuardianDevices(address guardian) view returns (string[])",
+  "function getPatientDevices(address patient) view returns (string[])",
   "function deviceRegistry() view returns (address)",
   "function eventLogger() view returns (address)"
 ];
@@ -90,8 +93,11 @@ const walletStatus = document.getElementById('walletStatus');
 const registerForm = document.getElementById('registerForm');
 const getDeviceBtn = document.getElementById('getDeviceBtn');
 const getEventsBtn = document.getElementById('getEventsBtn');
+const getMyDevicesBtn = document.getElementById('getMyDevicesBtn');
+const getMyPatientsBtn = document.getElementById('getMyPatientsBtn');
 const deviceInfo = document.getElementById('deviceInfo');
 const eventsOutput = document.getElementById('eventsOutput');
+const multiDeviceOutput = document.getElementById('multiDeviceOutput');
 const contractAddress = document.getElementById('contractAddress');
 const networkName = document.getElementById('networkName');
 
@@ -118,6 +124,8 @@ function init() {
   registerForm.addEventListener('submit', handleRegister);
   getDeviceBtn.addEventListener('click', getDeviceInfo);
   getEventsBtn.addEventListener('click', getDeviceEvents);
+  getMyDevicesBtn.addEventListener('click', getMyDevices);
+  getMyPatientsBtn.addEventListener('click', getMyPatients);
 
   // Listen for account changes
   window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -282,8 +290,156 @@ function disconnectWallet() {
   deviceInfo.classList.remove('show');
   eventsOutput.innerHTML = '';
   eventsOutput.classList.remove('show');
+  multiDeviceOutput.innerHTML = '';
+  multiDeviceOutput.classList.remove('show');
   
   console.log('Wallet disconnected');
+}
+
+async function getMyDevices() {
+  if (!contract) {
+    alert('Please connect your wallet first!');
+    return;
+  }
+
+  try {
+    getMyDevicesBtn.disabled = true;
+    getMyDevicesBtn.innerHTML = '<span class="loading"></span> Loading...';
+
+    const deviceIds = await contract.getPatientDevices(userAddress);
+    console.log('My devices:', deviceIds);
+
+    if (deviceIds.length === 0) {
+      multiDeviceOutput.innerHTML = `
+        <h4>My Registered Devices (0)</h4>
+        <p>You haven't registered any devices yet.</p>
+      `;
+      multiDeviceOutput.classList.add('show');
+      return;
+    }
+
+    // Fetch details for each device
+    let html = `<h4>My Registered Devices (${deviceIds.length})</h4>`;
+    
+    for (const deviceId of deviceIds) {
+      try {
+        const device = await contract.getDevice(deviceId);
+        const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
+        
+        html += `
+          <div class="device-card">
+            <div class="device-header">
+              <strong>📱 ${device.deviceId}</strong>
+              <span class="status-badge ${device.isActive ? 'active' : 'inactive'}">
+                ${device.isActive ? '✅ Active' : '❌ Inactive'}
+              </span>
+            </div>
+            <div class="device-details" style="color: navy !important;">
+              <div><strong>Patient:</strong> ${device.fullName} (${device.age} years)</div>
+              <div><strong>Guardian:</strong> ${device.guardian.substring(0, 6)}...${device.guardian.substring(38)}</div>
+              <div><strong>Home:</strong> ${device.homeLocation}</div>
+              <div><strong>Registered:</strong> ${registeredDate}</div>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        html += `
+          <div class="device-card error">
+            <strong>${deviceId}</strong>
+            <p>Error loading device info</p>
+          </div>
+        `;
+      }
+    }
+
+    multiDeviceOutput.innerHTML = html;
+    multiDeviceOutput.classList.add('show');
+
+  } catch (error) {
+    console.error('Error fetching my devices:', error);
+    alert('Failed to fetch your devices: ' + error.message);
+  } finally {
+    getMyDevicesBtn.disabled = false;
+    getMyDevicesBtn.textContent = 'My Registered Devices';
+  }
+}
+
+async function getMyPatients() {
+  if (!contract) {
+    alert('Please connect your wallet first!');
+    return;
+  }
+
+  try {
+    getMyPatientsBtn.disabled = true;
+    getMyPatientsBtn.innerHTML = '<span class="loading"></span> Loading...';
+
+    const deviceIds = await contract.getGuardianDevices(userAddress);
+    console.log('Patients I guard:', deviceIds);
+
+    if (deviceIds.length === 0) {
+      multiDeviceOutput.innerHTML = `
+        <h4>Patients I'm Guarding (0)</h4>
+        <p>You are not assigned as a guardian for any patients yet.</p>
+      `;
+      multiDeviceOutput.classList.add('show');
+      return;
+    }
+
+    // Fetch details for each device
+    let html = `<h4>Patients I'm Guarding (${deviceIds.length})</h4>`;
+    
+    for (const deviceId of deviceIds) {
+      try {
+        const device = await contract.getDevice(deviceId);
+        const eventCount = await contract.getDeviceEventCount(deviceId);
+        const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
+        
+        html += `
+          <div class="device-card guardian" style="color: navy !important;">
+            <div class="device-header" style="color: navy !important;">
+              <strong>🏥 ${device.deviceId}</strong>
+              <span class="status-badge ${device.isActive ? 'active' : 'inactive'}">
+          ${device.isActive ? '✅ Active' : '❌ Inactive'}
+              </span>
+            </div>
+            <div class="device-details" style="color: navy !important;">
+              <div style="color: navy !important;"><strong>Patient:</strong> ${device.fullName} (${device.age} years)</div>
+              <div style="color: navy !important;"><strong>Patient Address:</strong> ${device.patient.substring(0, 6)}...${device.patient.substring(38)}</div>
+              <div style="color: navy !important;"><strong>Home Location:</strong> ${device.homeLocation}</div>
+              <div style="color: navy !important;"><strong>Events Logged:</strong> ${eventCount.toString()}</div>
+              <div style="color: navy !important;"><strong>Registered:</strong> ${registeredDate}</div>
+            </div>
+            <button class="btn btn-sm" onclick="viewPatientEvents('${deviceId}')" style="color: navy !important; background: transparent; border: 1px solid navy;">View Events</button>
+          </div>
+        `;
+      } catch (error) {
+        html += `
+          <div class="device-card error">
+            <strong>${deviceId}</strong>
+            <p>Error loading patient info</p>
+          </div>
+        `;
+      }
+    }
+
+    multiDeviceOutput.innerHTML = html;
+    multiDeviceOutput.classList.add('show');
+
+  } catch (error) {
+    console.error('Error fetching my patients:', error);
+    alert('Failed to fetch your patients: ' + error.message);
+  } finally {
+    getMyPatientsBtn.disabled = false;
+    getMyPatientsBtn.textContent = "Patients I'm Guarding";
+  }
+}
+
+// Helper function to view events for a specific patient
+window.viewPatientEvents = async function(deviceId) {
+  document.getElementById('queryDeviceId').value = deviceId;
+  await getDeviceEvents();
+  document.getElementById('eventsOutput').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function handleRegister(e) {
