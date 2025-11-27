@@ -1,4 +1,5 @@
 import Gun from 'gun'
+import http from 'http'
 import { config } from './config.js'
 
 let gun = null
@@ -15,15 +16,25 @@ export async function initStorage() {
     // Initialize Gun
     // In a real DePIN setup, you would add peers here:
     // peers: ['http://peer1.com/gun', 'http://peer2.com/gun']
+    
+    // Create HTTP server for Gun relay
+    const server = http.createServer()
+    
     gun = Gun({
       file: 'data.json', // Local storage file
-      radisk: true // Use Radix storage engine
+      radisk: true, // Use Radix storage engine
+      web: server // HTTP server for Gun
+    })
+
+    // Start Gun relay server
+    server.listen(8765, () => {
+      console.log('AXE relay enabled!')
     })
 
     console.log(`GunDB initialized`)
 
     // Reference to the events node
-    eventDB = gun.get('patient-events')
+    eventDB = gun.get('events')
 
     isInitialized = true
     return true

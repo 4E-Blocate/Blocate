@@ -76,8 +76,8 @@
       ]
     },
     "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\PatientMonitor.sol": {
-      "lastModificationDate": 1763717705875,
-      "contentHash": "708453fd675aff8e639c13fd452d5337",
+      "lastModificationDate": 1764217648029,
+      "contentHash": "b4bacbe9c790f00dd3272af5c6b4676d",
       "sourceName": "contracts/PatientMonitor.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -115,8 +115,8 @@
       ]
     },
     "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\EventLogger.sol": {
-      "lastModificationDate": 1764137874556,
-      "contentHash": "e71347e4455eefe57016dcedfdfcb73f",
+      "lastModificationDate": 1764217667595,
+      "contentHash": "9ccf2e8f8d8c157f2208194481225660",
       "sourceName": "contracts/EventLogger.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -154,8 +154,8 @@
       ]
     },
     "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\IEventLogger.sol": {
-      "lastModificationDate": 1762316146090,
-      "contentHash": "73d07255394e67b07a192c3f43f06c23",
+      "lastModificationDate": 1764217667587,
+      "contentHash": "bfb0e858da8fb45b44011f3ae047a8ea",
       "sourceName": "contracts/IEventLogger.sol",
       "solcConfig": {
         "version": "0.8.20",

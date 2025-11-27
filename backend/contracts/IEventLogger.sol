@@ -29,6 +29,13 @@ interface IEventLogger {
         string memory eventType
     ) external;
     
+    function logEventFrom(
+        address caller,
+        string memory deviceId,
+        bytes32 dataHash,
+        string memory eventType
+    ) external;
+    
     function getEvent(uint256 index) external view returns (EventLog memory);
     function getDeviceEvents(string memory deviceId, uint256 limit) external view returns (EventLog[] memory);
     function getDeviceEventCount(string memory deviceId) external view returns (uint256);

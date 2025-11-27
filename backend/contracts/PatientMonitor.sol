@@ -130,7 +130,7 @@ contract PatientMonitor {
         bytes32 dataHash,
         string memory eventType
     ) external {
-        eventLogger.logEvent(deviceId, dataHash, eventType);
+        eventLogger.logEventFrom(msg.sender, deviceId, dataHash, eventType);
     }
     
     function getEvent(

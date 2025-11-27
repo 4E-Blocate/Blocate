@@ -80,17 +80,21 @@ export async function processTelemetry(payload) {
     // Store full data in GunDB
     console.log(`Storing event in GunDB...`)
     const storageId = await storeEvent(eventData)
+    console.log(`💾 Event stored in GunDB: ${storageId}`)
 
-    // Log hash to blockchain (if device is registered)
+    // Log to blockchain ONLY for alerts and critical events (save gas)
     let blockchainResult = null
-    if (registered) {
+    if (registered && (eventType === 'alert' || eventType === 'critical')) {
       try {
-        console.log(`Logging to blockchain...`)
+        console.log(`Logging ${eventType} event to blockchain...`)
         blockchainResult = await logEventToChain(deviceId, eventData, eventType)
+        console.log(`⛓️  Event logged to blockchain`)
       } catch (error) {
         console.error(`Blockchain logging failed: ${error.message}`)
         // Continue anyway - data is still in GunDB
       }
+    } else if (registered && eventType === 'normal') {
+      console.log(`ℹ️  Normal event - skipping blockchain (saved gas)`)
     }
 
     const result = {
@@ -133,18 +137,21 @@ export async function processAlert(payload) {
 
     // Store in GunDB
     const gunDbId = await storeEvent(eventData)
+    console.log(`💾 Alert stored in GunDB: ${gunDbId}`)
 
-    // Log to blockchain
+    // Log to blockchain if device is registered
     let blockchainResult = null
     const registered = await isDeviceRegistered(payload.deviceId)
     
     if (registered) {
       try {
+        console.log(`Logging alert to blockchain...`)
         blockchainResult = await logEventToChain(
           payload.deviceId,
           eventData,
           'critical'
         )
+        console.log(`⛓️  Alert logged to blockchain`)
       } catch (error) {
         console.error(`Failed to log alert to blockchain: ${error.message}`)
       }

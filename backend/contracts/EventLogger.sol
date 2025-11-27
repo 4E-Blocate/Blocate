@@ -71,13 +71,41 @@ contract EventLogger is IEventLogger {
         bytes32 dataHash,
         string memory eventType
     ) external override deviceRegistered(deviceId) deviceActive(deviceId) {
-        
+        _logEventInternal(msg.sender, deviceId, dataHash, eventType);
+    }
+    
+    /**
+     * @notice Log event on behalf of another address (for delegated calls)
+     * @dev Used when PatientMonitor contract delegates to this contract
+     * @param caller The original caller address
+     * @param deviceId Device that generated the event
+     * @param dataHash SHA-256 hash of full event data
+     * @param eventType Event severity: "normal", "alert", or "critical"
+     */
+    function logEventFrom(
+        address caller,
+        string memory deviceId,
+        bytes32 dataHash,
+        string memory eventType
+    ) external override deviceRegistered(deviceId) deviceActive(deviceId) {
+        _logEventInternal(caller, deviceId, dataHash, eventType);
+    }
+    
+    /**
+     * @dev Internal function to log events
+     */
+    function _logEventInternal(
+        address caller,
+        string memory deviceId,
+        bytes32 dataHash,
+        string memory eventType
+    ) private {
         // Get device info from registry
         IDeviceRegistry.Device memory device = deviceRegistry.getDevice(deviceId);
         
         // ACCESS CONTROL: Only patient or guardian can log events
         require(
-            msg.sender == device.patient || msg.sender == device.guardian,
+            caller == device.patient || caller == device.guardian,
             "EventLogger: Only patient or guardian can log events"
         );
         

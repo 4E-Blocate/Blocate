@@ -2,17 +2,77 @@ import { ethers } from 'ethers';
 
 // Configuration - UPDATE THIS AFTER DEPLOYMENT!
 const CONFIG = {
-  CONTRACT_ADDRESS: "0xf0916175fDF2678f46cF9997352C1A68f2133F84", // Replace with your deployed address
+  CONTRACT_ADDRESS: "0xDef80349B405f4AEBC83B2ccB360F71a142E13bA", // Replace with your deployed address
   SEPOLIA_CHAIN_ID: "0xaa36a7", // 11155111 in decimal
-  SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo" // Public RPC for fallback
+  SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo", // Public RPC for fallback
+  GUNDB_PEERS: ['http://localhost:8765/gun'] // GunDB relay server from backend
 };
+
+// Initialize GunDB
+let gun = null;
+let sensorDataListener = null;
+
+// Try to load Gun if available
+async function initGunDB() {
+  try {
+    // Check if Gun is already loaded
+    if (typeof Gun !== 'undefined') {
+      gun = Gun({
+        peers: CONFIG.GUNDB_PEERS,
+        localStorage: false,
+        radisk: false
+      });
+      console.log('✅ GunDB initialized with peers:', CONFIG.GUNDB_PEERS);
+      subscribeToSensorData();
+    } else {
+      console.warn('⚠️ Gun library not loaded. Loading from CDN...');
+      // Dynamically load Gun script
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/gun/gun.js';
+      script.onload = () => {
+        gun = Gun({
+          peers: CONFIG.GUNDB_PEERS,
+          localStorage: false,
+          radisk: false
+        });
+        console.log('✅ GunDB initialized with peers:', CONFIG.GUNDB_PEERS);
+        subscribeToSensorData();
+      };
+      script.onerror = () => {
+        console.error('❌ Failed to load Gun library');
+      };
+      document.head.appendChild(script);
+    }
+  } catch (error) {
+    console.warn('⚠️ GunDB initialization failed:', error.message);
+  }
+}
+
+// Subscribe to real-time sensor data from GunDB
+function subscribeToSensorData() {
+  if (!gun) return;
+  
+  console.log('📡 Subscribing to GunDB events...');
+  
+  // Listen to all patient telemetry events
+  gun.get('events').map().on((data, key) => {
+    if (data && data.deviceId) {
+      console.log('📥 Received sensor data:', data);
+      updateSensorDisplay(data);
+    }
+  });
+  
+  console.log('✅ Listening for sensor data from GunDB');
+}
 
 // Contract ABI - Minimal interface for our needs
 const CONTRACT_ABI = [
   "function registerDevice(string deviceId, address guardian, string fullName, uint8 age, string homeLocation)",
   "function getDevice(string deviceId) view returns (tuple(string deviceId, address patient, address guardian, string fullName, uint8 age, string homeLocation, bool isActive, uint256 registeredAt))",
-  "function getDeviceEvents(string deviceId, uint256 limit) view returns (tuple(string deviceId, address guardian, bytes32 dataHash, string eventType, uint256 timestamp)[])",
+  "function getDeviceEvents(string deviceId, uint256 limit) view returns (tuple(string deviceId, bytes32 dataHash, address guardian, string eventType, uint256 timestamp)[])",
   "function isDeviceRegistered(string deviceId) view returns (bool)",
+  "function isDeviceActive(string deviceId) view returns (bool)",
+  "function logEvent(string deviceId, bytes32 dataHash, string eventType)",
   "function deviceRegistry() view returns (address)",
   "function eventLogger() view returns (address)"
 ];
@@ -25,6 +85,7 @@ let userAddress = null;
 
 // DOM Elements
 const connectBtn = document.getElementById('connectBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
 const walletStatus = document.getElementById('walletStatus');
 const registerForm = document.getElementById('registerForm');
 const getDeviceBtn = document.getElementById('getDeviceBtn');
@@ -41,6 +102,9 @@ function init() {
   // Display contract address
   contractAddress.textContent = CONFIG.CONTRACT_ADDRESS;
   
+  // Initialize GunDB for real-time sensor data
+  initGunDB();
+  
   // Check if MetaMask is installed
   if (typeof window.ethereum === 'undefined') {
     walletStatus.innerHTML = '<span class="status-icon">⚠️</span><span class="status-text">Please install MetaMask</span>';
@@ -50,6 +114,7 @@ function init() {
 
   // Setup event listeners
   connectBtn.addEventListener('click', connectWallet);
+  disconnectBtn.addEventListener('click', disconnectWallet);
   registerForm.addEventListener('submit', handleRegister);
   getDeviceBtn.addEventListener('click', getDeviceInfo);
   getEventsBtn.addEventListener('click', getDeviceEvents);
@@ -61,6 +126,68 @@ function init() {
   // Try to connect if already authorized
   checkIfConnected();
 }
+
+// Update sensor display with real-time data
+function updateSensorDisplay(data) {
+  const bpmValue = document.getElementById('bpmValue');
+  const tempValue = document.getElementById('tempValue');
+  const gpsValue = document.getElementById('gpsValue');
+  const deviceValue = document.getElementById('deviceValue');
+  const lastUpdate = document.getElementById('lastUpdate');
+  const sensorStatus = document.getElementById('sensorStatus');
+  const eventAlert = document.getElementById('eventAlert');
+  
+  // Update values
+  bpmValue.textContent = data.bpm || '--';
+  tempValue.textContent = data.temp ? data.temp.toFixed(1) : '--';
+  gpsValue.textContent = data.gps || '--';
+  deviceValue.textContent = data.deviceId || '--';
+  
+  // Update timestamp
+  const now = new Date();
+  lastUpdate.textContent = now.toLocaleTimeString();
+  
+  // Update status badge
+  sensorStatus.classList.add('active');
+  sensorStatus.innerHTML = '<span class="status-dot"></span><span>Receiving live data</span>';
+  
+  // Show alert if event type is not normal
+  if (data.eventType && data.eventType !== 'normal') {
+    eventAlert.style.display = 'flex';
+    const alertText = eventAlert.querySelector('.alert-text');
+    
+    if (data.eventType === 'alert') {
+      alertText.textContent = `⚠️ Alert: Abnormal vitals detected - BPM: ${data.bpm}, Temp: ${data.temp}°C`;
+      eventAlert.style.background = 'rgba(251, 191, 36, 0.2)';
+      eventAlert.style.borderColor = '#fbbf24';
+    } else if (data.eventType === 'critical') {
+      alertText.textContent = `🚨 CRITICAL: Immediate attention required - BPM: ${data.bpm}, Temp: ${data.temp}°C`;
+      eventAlert.style.background = 'rgba(239, 68, 68, 0.2)';
+      eventAlert.style.borderColor = '#ef4444';
+    }
+  } else {
+    eventAlert.style.display = 'none';
+  }
+  
+  // Visual feedback - flash the updated card
+  const cards = document.querySelectorAll('.sensor-card');
+  cards.forEach(card => {
+    card.style.animation = 'none';
+    setTimeout(() => {
+      card.style.animation = 'cardFlash 0.5s ease';
+    }, 10);
+  });
+}
+
+// Add CSS animation for card flash
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes cardFlash {
+    0%, 100% { background: rgba(255, 255, 255, 0.15); }
+    50% { background: rgba(255, 255, 255, 0.3); }
+  }
+`;
+document.head.appendChild(style);
 
 async function checkIfConnected() {
   try {
@@ -115,8 +242,8 @@ async function connectWallet() {
     // Update UI
     walletStatus.innerHTML = `<span class="status-icon">✅</span><span class="status-text">Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(38)}</span>`;
     walletStatus.className = 'connected';
-    connectBtn.textContent = 'Connected';
-    connectBtn.disabled = true;
+    connectBtn.style.display = 'none';
+    disconnectBtn.style.display = 'inline-block';
 
     console.log('Connected to wallet:', userAddress);
     console.log('Contract:', CONFIG.CONTRACT_ADDRESS);
@@ -135,6 +262,28 @@ function handleAccountsChanged(accounts) {
     // User switched accounts
     location.reload();
   }
+}
+
+function disconnectWallet() {
+  // Reset state
+  provider = null;
+  signer = null;
+  contract = null;
+  userAddress = null;
+  
+  // Update UI
+  walletStatus.innerHTML = '<span class="status-icon">❌</span><span class="status-text">Wallet Not Connected</span>';
+  walletStatus.className = 'disconnected';
+  connectBtn.style.display = 'inline-block';
+  disconnectBtn.style.display = 'none';
+  
+  // Clear results
+  deviceInfo.innerHTML = '';
+  deviceInfo.classList.remove('show');
+  eventsOutput.innerHTML = '';
+  eventsOutput.classList.remove('show');
+  
+  console.log('Wallet disconnected');
 }
 
 async function handleRegister(e) {
@@ -169,8 +318,24 @@ async function handleRegister(e) {
   try {
     console.log('Registering device:', { deviceId, patientName, age, guardianAddress, homeGPS });
 
-    // Check if already registered
-    const isRegistered = await contract.isDeviceRegistered(deviceId);
+    // Check if already registered (with retry for new contracts)
+    let isRegistered = false;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        isRegistered = await contract.isDeviceRegistered(deviceId);
+        break;
+      } catch (err) {
+        if (err.code === 'BAD_DATA' && retries > 1) {
+          console.log('Contract not ready, waiting 3 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          retries--;
+        } else {
+          throw err;
+        }
+      }
+    }
+    
     if (isRegistered) {
       alert(`Device ${deviceId} is already registered!`);
       return;
