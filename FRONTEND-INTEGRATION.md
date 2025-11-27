@@ -587,101 +587,141 @@ fetch('http://localhost:3000/api/log-event', {
 
 But normally, events come from ESP32 → MQTT → Backend → Blockchain automatically.
 
-## Push Notifications (EPNS / Push Protocol)
+## Wallet Messaging (XMTP Protocol)
 
-EPNS (now called Push Protocol) allows sending notifications to wallet addresses off-website.
+XMTP (Extensible Message Transport Protocol) enables direct wallet-to-wallet messaging. **100% free, no tokens required**.
 
-### Setup Push Protocol
+### Setup XMTP
 
 ```bash
-npm install @pushprotocol/restapi ethers
+npm install @xmtp/xmtp-js ethers
 ```
 
-### Backend Integration (`backend/pushNotifications.js`)
+### Backend Integration (`backend/xmtpNotifications.js`)
 
 ```javascript
-import * as PushAPI from '@pushprotocol/restapi';
-import { ethers } from 'ethers';
+import { Client } from '@xmtp/xmtp-js';
+import { Wallet } from 'ethers';
 
-// Initialize Push Protocol
-const PK = process.env.TON_PRIVATE_KEY; // Backend wallet
-const Pkey = `0x${PK}`;
-const signer = new ethers.Wallet(Pkey);
+let xmtpClient = null;
 
 /**
- * Send push notification to guardian when alert occurs
+ * Initialize XMTP client (call once on startup)
+ */
+export async function initXMTP() {
+  try {
+    const wallet = new Wallet(process.env.TON_PRIVATE_KEY);
+    
+    xmtpClient = await Client.create(wallet, {
+      env: 'production' // or 'dev' for testing
+    });
+    
+    console.log('[INFO] XMTP client initialized:', wallet.address);
+    return true;
+  } catch (error) {
+    console.error('[ERROR] XMTP initialization failed:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Send message to guardian wallet
  */
 export async function notifyGuardian(guardianAddress, deviceId, alertData) {
-  try {
-    const apiResponse = await PushAPI.payloads.sendNotification({
-      signer,
-      type: 3, // Target specific addresses
-      identityType: 2, // Direct payload
-      notification: {
-        title: `🚨 Alert: ${deviceId}`,
-        body: `BPM: ${alertData.bpm} | Temp: ${alertData.temp}°C | Status: ${alertData.eventType}`
-      },
-      payload: {
-        title: `Patient Alert - ${deviceId}`,
-        body: `Heart Rate: ${alertData.bpm} BPM\nTemperature: ${alertData.temp}°C\nLocation: ${alertData.gps}\nType: ${alertData.eventType.toUpperCase()}`,
-        cta: `https://yourapp.com/device/${deviceId}`,
-        img: ''
-      },
-      recipients: `eip155:11155111:${guardianAddress}`, // Sepolia testnet
-      channel: `eip155:11155111:${signer.address}`, // Your channel address
-      env: 'staging' // Use 'prod' for mainnet
-    });
+  if (!xmtpClient) {
+    throw new Error('XMTP client not initialized');
+  }
 
-    console.log('📬 Push notification sent:', apiResponse.status);
-    return apiResponse;
+  try {
+    // Check if guardian can receive XMTP messages
+    const canMessage = await xmtpClient.canMessage(guardianAddress);
+    if (!canMessage) {
+      console.warn(`Guardian ${guardianAddress} hasn't enabled XMTP yet`);
+      return { success: false, reason: 'Guardian not on XMTP' };
+    }
+
+    // Get or create conversation
+    const conversation = await xmtpClient.conversations.newConversation(guardianAddress);
+    
+    // Format alert message
+    const message = `🚨 PATIENT ALERT
+
+Device: ${deviceId}
+Status: ${alertData.eventType.toUpperCase()}
+
+Vitals:
+❤️ Heart Rate: ${alertData.bpm} BPM
+🌡️ Temperature: ${alertData.temp}°C
+📍 Location: ${alertData.gps}
+
+Time: ${new Date().toLocaleString()}
+
+View details: https://yourapp.com/device/${deviceId}`;
+
+    // Send message
+    await conversation.send(message);
+    
+    console.log(`📬 XMTP alert sent to guardian ${guardianAddress}`);
+    return { success: true };
+    
   } catch (error) {
-    console.error('Failed to send push notification:', error);
+    console.error('Failed to send XMTP message:', error);
     throw error;
   }
 }
 
 /**
- * Send notification to multiple guardians
+ * Send message to multiple guardians
  */
 export async function notifyMultipleGuardians(guardianAddresses, deviceId, alertData) {
-  const recipients = guardianAddresses
-    .map(addr => `eip155:11155111:${addr}`)
-    .join(',');
-
-  try {
-    const apiResponse = await PushAPI.payloads.sendNotification({
-      signer,
-      type: 4, // Subset of channel subscribers
-      identityType: 2,
-      notification: {
-        title: `🚨 Critical Alert: ${deviceId}`,
-        body: `Multiple guardians notified - Immediate attention required`
-      },
-      payload: {
-        title: `CRITICAL: Patient ${deviceId}`,
-        body: `BPM: ${alertData.bpm} | Temp: ${alertData.temp}°C\nLocation: ${alertData.gps}`,
-        cta: `https://yourapp.com/device/${deviceId}`,
-        img: ''
-      },
-      recipients,
-      channel: `eip155:11155111:${signer.address}`,
-      env: 'staging'
-    });
-
-    console.log('📬 Broadcast notification sent to', guardianAddresses.length, 'guardians');
-    return apiResponse;
-  } catch (error) {
-    console.error('Failed to send broadcast:', error);
-    throw error;
+  const results = [];
+  
+  for (const address of guardianAddresses) {
+    try {
+      const result = await notifyGuardian(address, deviceId, alertData);
+      results.push({ address, ...result });
+    } catch (error) {
+      results.push({ address, success: false, error: error.message });
+    }
   }
+  
+  const successCount = results.filter(r => r.success).length;
+  console.log(`📬 XMTP broadcast: ${successCount}/${guardianAddresses.length} guardians notified`);
+  
+  return results;
+}
+
+/**
+ * Get conversation history (for debugging)
+ */
+export async function getConversations() {
+  if (!xmtpClient) return [];
+  
+  const conversations = await xmtpClient.conversations.list();
+  return conversations.map(c => ({
+    peerAddress: c.peerAddress,
+    createdAt: c.createdAt
+  }));
 }
 ```
 
 ### Integrate into Backend Logic
 
 ```javascript
+// In backend/index.js
+import { initXMTP } from './xmtpNotifications.js';
+
+async function main() {
+  // ... existing initialization ...
+  
+  // Initialize XMTP
+  await initXMTP();
+  
+  // ... rest of startup ...
+}
+
 // In backend/logic.js
-import { notifyGuardian } from './pushNotifications.js';
+import { notifyGuardian } from './xmtpNotifications.js';
 import { getDeviceInfo } from './tonBlockchain.js';
 
 export async function processAlert(payload) {
@@ -714,12 +754,12 @@ export async function processAlert(payload) {
         console.error(`Blockchain logging failed: ${error.message}`);
       }
 
-      // Send push notification to guardian
+      // Send XMTP message to guardian
       try {
         await notifyGuardian(deviceInfo.guardian, payload.deviceId, eventData);
-        console.log(`📬 Guardian notified via Push Protocol`);
+        console.log(`📬 Guardian notified via XMTP`);
       } catch (error) {
-        console.error(`Push notification failed: ${error.message}`);
+        console.error(`XMTP notification failed: ${error.message}`);
       }
     }
 
@@ -738,143 +778,154 @@ export async function processAlert(payload) {
 }
 ```
 
-### Frontend - Subscribe to Notifications
+### Frontend - XMTP Inbox
 
 ```typescript
 'use client';
 
-import * as PushAPI from '@pushprotocol/restapi';
+import { Client, Conversation } from '@xmtp/xmtp-js';
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useWalletClient } from 'wagmi';
 
-export function useNotifications() {
-  const { address } = useAccount();
-  const [notifications, setNotifications] = useState<any[]>([]);
+export function useXMTP() {
+  const { data: walletClient } = useWalletClient();
+  const [client, setClient] = useState<Client | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Map<string, any[]>>(new Map());
 
   useEffect(() => {
-    if (!address) return;
+    if (!walletClient) return;
 
-    const fetchNotifications = async () => {
+    const initXMTP = async () => {
       try {
-        const notifications = await PushAPI.user.getFeeds({
-          user: `eip155:11155111:${address}`,
-          env: 'staging',
-          limit: 30,
+        const xmtpClient = await Client.create(walletClient, {
+          env: 'production'
         });
+        setClient(xmtpClient);
 
-        setNotifications(notifications);
+        // Load conversations
+        const convos = await xmtpClient.conversations.list();
+        setConversations(convos);
+
+        // Load messages for each conversation
+        const messagesMap = new Map();
+        for (const convo of convos) {
+          const msgs = await convo.messages();
+          messagesMap.set(convo.peerAddress, msgs);
+        }
+        setMessages(messagesMap);
+
+        // Stream new messages
+        const stream = await xmtpClient.conversations.stream();
+        for await (const conversation of stream) {
+          setConversations(prev => [...prev, conversation]);
+        }
       } catch (error) {
-        console.error('Failed to fetch notifications:', error);
+        console.error('Failed to initialize XMTP:', error);
       }
     };
 
-    fetchNotifications();
-    
-    // Poll every 30 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [address]);
+    initXMTP();
+  }, [walletClient]);
 
-  return { notifications };
+  return { client, conversations, messages };
 }
 
-// Component to display notifications
-export function NotificationBell() {
-  const { notifications } = useNotifications();
-  const unreadCount = notifications.filter(n => !n.read).length;
+// Inbox Component
+export function XMTPInbox() {
+  const { conversations, messages } = useXMTP();
+
+  if (conversations.length === 0) {
+    return <div>No messages yet</div>;
+  }
 
   return (
-    <div className="notification-bell">
-      <button className="bell-icon">
-        🔔
-        {unreadCount > 0 && (
-          <span className="badge">{unreadCount}</span>
-        )}
-      </button>
-      
-      <div className="notification-dropdown">
-        {notifications.length === 0 ? (
-          <div>No notifications</div>
-        ) : (
-          notifications.map((notif, i) => (
-            <div key={i} className={`notification ${notif.read ? 'read' : 'unread'}`}>
-              <h4>{notif.title}</h4>
-              <p>{notif.message}</p>
-              <small>{new Date(notif.epoch * 1000).toLocaleString()}</small>
+    <div className="xmtp-inbox">
+      <h2>Patient Alerts</h2>
+      {conversations.map((convo) => {
+        const msgs = messages.get(convo.peerAddress) || [];
+        
+        return (
+          <div key={convo.peerAddress} className="conversation">
+            <h3>From: {convo.peerAddress.slice(0, 6)}...{convo.peerAddress.slice(-4)}</h3>
+            
+            <div className="messages">
+              {msgs.map((msg, i) => (
+                <div key={i} className={`message ${msg.senderAddress === convo.peerAddress ? 'received' : 'sent'}`}>
+                  <pre>{msg.content}</pre>
+                  <small>{new Date(msg.sent).toLocaleString()}</small>
+                </div>
+              ))}
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
-```
 
-### Push Protocol Setup Steps
+// Real-time message streaming
+export function useXMTPStream(conversation: Conversation | null) {
+  const [messages, setMessages] = useState<any[]>([]);
 
-1. **Create Channel (One-time setup):**
-```typescript
-import * as PushAPI from '@pushprotocol/restapi';
-import { ethers } from 'ethers';
+  useEffect(() => {
+    if (!conversation) return;
 
-const PK = 'YOUR_PRIVATE_KEY';
-const Pkey = `0x${PK}`;
-const signer = new ethers.Wallet(Pkey);
+    const streamMessages = async () => {
+      // Load existing messages
+      const existing = await conversation.messages();
+      setMessages(existing);
 
-const response = await PushAPI.channels.create({
-  signer: signer,
-  name: 'Patient Guardian Alerts',
-  description: 'Real-time health monitoring alerts',
-  url: 'https://yourapp.com',
-  icon: 'data:image/png;base64,...', // Base64 encoded icon
-  aliasDetails: null,
-  progressHook: (progress) => console.log(progress)
-});
-```
+      // Stream new messages
+      const stream = await conversation.streamMessages();
+      for await (const message of stream) {
+        setMessages(prev => [...prev, message]);
+        
+        // Play notification sound
+        if (message.senderAddress !== conversation.clientAddress) {
+          new Audio('/alert-sound.mp3').play();
+        }
+      }
+    };
 
-2. **Users Opt-In (Frontend):**
-```typescript
-import * as PushAPI from '@pushprotocol/restapi';
-import { useWalletClient } from 'wagmi';
+    streamMessages();
+  }, [conversation]);
 
-export function OptInButton({ channelAddress }: { channelAddress: string }) {
-  const { data: walletClient } = useWalletClient();
-
-  const optIn = async () => {
-    if (!walletClient) return;
-
-    await PushAPI.channels.subscribe({
-      signer: walletClient,
-      channelAddress: `eip155:11155111:${channelAddress}`,
-      userAddress: `eip155:11155111:${walletClient.account.address}`,
-      env: 'staging'
-    });
-
-    alert('✅ Subscribed to patient alerts!');
-  };
-
-  return <button onClick={optIn}>Enable Notifications</button>;
+  return messages;
 }
 ```
 
-3. **Environment Variables:**
-```env
-# Add to backend/.env
-PUSH_CHANNEL_ADDRESS=0xYourChannelAddress
-PUSH_ENV=staging  # or 'prod' for mainnet
+### Enable XMTP on First Use
+
+```typescript
+'use client';
+
+import { Client } from '@xmtp/xmtp-js';
+import { useWalletClient } from 'wagmi';
+
+export function EnableXMTPButton() {
+  const { data: walletClient } = useWalletClient();
+
+  const enable = async () => {
+    if (!walletClient) {
+      alert('Please connect wallet first');
+      return;
+    }
+
+    try {
+      // This creates XMTP identity for the wallet
+      await Client.create(walletClient, { env: 'production' });
+      alert('✅ XMTP enabled! You can now receive patient alerts.');
+    } catch (error) {
+      console.error('Failed to enable XMTP:', error);
+      alert('Failed to enable XMTP');
+    }
+  };
+
+  return (
+    <button onClick={enable} className="btn btn-primary">
+      Enable Patient Alerts
+    </button>
+  );
+}
 ```
-
-### Important Notes
-
-- **Testnet**: Use `staging` env and Sepolia (`eip155:11155111`)
-- **Mainnet**: Use `prod` env and Ethereum mainnet (`eip155:1`)
-- **Gas Costs**: Creating a channel costs ~50 PUSH tokens (one-time)
-- **Opt-in Required**: Users must subscribe to your channel first
-- **Rate Limits**: Free tier has limits, check Push Protocol docs
-
-### Resources
-
-- Push Protocol Docs: https://docs.push.org/
-- Get PUSH tokens: https://app.push.org/
-- Channel Dashboard: https://app.push.org/channels
-- Example Code: https://github.com/ethereum-push-notification-service/push-sdk
