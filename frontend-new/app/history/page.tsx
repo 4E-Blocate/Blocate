@@ -170,11 +170,11 @@ export default function HistoryPage() {
                 <div
                   className={`${
                     data.status === "Kritis"
-                      ? "bg-red-600"
+                      ? "bg-red-600 text-white"
                       : data.status === "Prihatin"
-                      ? "bg-[#FFDB43]"
-                      : "bg-[#84EBB4]"
-                  } text-white text-2xl w-fit px-4 py-2 rounded-xl font-semibold z-10`}
+                      ? "bg-[#FFDB43] text-[#003552]"
+                      : "bg-[#84EBB4] text-[#003552]"
+                  } text-2xl w-fit px-4 py-2 rounded-xl font-semibold z-10`}
                 >
                   {data.status}
                 </div>

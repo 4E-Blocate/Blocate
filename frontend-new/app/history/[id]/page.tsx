@@ -111,17 +111,17 @@ export default function PatientDetailsPage() {
           <h2 className="text-3xl font-semibold">Informasi Pasien</h2>
 
           {/* Health */}
-          <div className="flex justify-around w-full text-center">
+          <div className="flex flex-col md:flex-row justify-around w-full text-center gap-4">
             {/* Heart Rate */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Heart className="size-14 text-red-500" />
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Heart className="size-8 md:size-14 text-red-500" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
                   Heart Rate <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">
+                <h1 className="text-2xl md:text-3xl font-semibold">
                   {payload.heartRate} <span className="text-xl">bpm</span>
                 </h1>
                 <div
@@ -139,9 +139,9 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* SpO2 Level */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Droplets className="size-14 text-blue-600" />
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Droplets className="size-8 md:size-14 text-blue-600" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
@@ -151,7 +151,7 @@ export default function PatientDetailsPage() {
                   Level
                   <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">{payload.SpO2}%</h1>
+                <h1 className="text-2xl md:text-3xl font-semibold">{payload.SpO2}%</h1>
                 <div
                   className={`${
                     payload.SpO2Status === "Kritis"
@@ -167,15 +167,15 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* Body Temperature */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Thermometer className="size-14 text-yellow-500" />
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Thermometer className="size-8 md:size-14 text-yellow-500" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
                   BodyTemp <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">
+                <h1 className="text-2xl md:text-3xl font-semibold">
                   {payload.bodyTemperature} <span className="text-xl">°C</span>
                 </h1>
                 <div
@@ -218,10 +218,10 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* Map */}
-            <div className="rounded-lg h-96 border-2 border-[#02476D]"></div>
+            <div className="rounded-lg h-64 md:h-96 border-2 border-[#02476D]"></div>
 
             {/* Stats */}
-            <div className="w-full flex gap-6">
+            <div className="w-full flex flex-col md:flex-row gap-6">
               {/* Location Name */}
               <div className="w-full">
                 <label className="text-sm">Alamat Lokasi</label>
