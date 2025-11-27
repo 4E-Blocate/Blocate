@@ -22,7 +22,24 @@ export const config = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_API_URL: process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
   AI_ENABLED: process.env.AI_ENABLED === 'true',
-  AI_FALLBACK_MESSAGE: process.env.AI_FALLBACK_MESSAGE || 'AI Unavailable'
+  AI_FALLBACK_MESSAGE: process.env.AI_FALLBACK_MESSAGE || 'AI Unavailable',
+
+  // Notification Configuration
+  // WebSocket
+  WEBSOCKET_ENABLED: process.env.WEBSOCKET_ENABLED !== 'false', // Enabled by default
+  WEBSOCKET_PORT: process.env.WEBSOCKET_PORT || 8080,
+
+  // Email Notifications
+  EMAIL_ENABLED: process.env.EMAIL_ENABLED === 'true',
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
+
+  // Telegram Notifications
+  TELEGRAM_ENABLED: process.env.TELEGRAM_ENABLED === 'true',
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || ''
 }
 
 // Validation

@@ -6,9 +6,16 @@ import { initMQTT, closeMQTT, getMQTTStatus } from './mqttClient.js'
 import { initStorage, closeStorage, getStorageStatus } from './gunClient.js'
 import { processTelemetry, processAlert, validateTelemetryData } from './logic.js'
 import { getAIStatus } from './aiClient.js'
+import { 
+  initWebSocketNotifications, 
+  closeNotifications,
+  registerGuardianContacts 
+} from './notificationService.js'
+import http from 'http'
 
 // State
 let isRunning = false
+let httpServer = null
 
 /**
  * Handle incoming MQTT messages
@@ -72,6 +79,20 @@ async function initializeDePINNode() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     await initMQTT(handleMQTTMessage)
 
+    // Initialize notification services
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('Stage 4: Guardian Notification System')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    
+    // Create HTTP server for WebSocket
+    if (config.WEBSOCKET_ENABLED) {
+      httpServer = http.createServer()
+      initWebSocketNotifications(httpServer)
+      httpServer.listen(config.WEBSOCKET_PORT, () => {
+        console.log(`WebSocket server listening on port ${config.WEBSOCKET_PORT}`)
+      })
+    }
+
     // Display status
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('DePIN Node Status')
@@ -104,6 +125,10 @@ async function initializeDePINNode() {
     if (aiStatus.enabled) {
       console.log(`   Provider: ${aiStatus.provider}`)
     }
+
+    console.log(`\nNotifications:`)
+    console.log(`   WebSocket: ${config.WEBSOCKET_ENABLED ? `Enabled (port ${config.WEBSOCKET_PORT})` : 'Disabled'}`)
+    console.log(`   Telegram: ${config.TELEGRAM_ENABLED ? 'Enabled (all alerts → admin)' : 'Disabled'}`)
 
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('DePIN Node Running')
@@ -138,6 +163,11 @@ async function shutdown() {
     await closeMQTT()
     await closeStorage()
     await closeBlockchain()
+    await closeNotifications()
+    
+    if (httpServer) {
+      httpServer.close()
+    }
     
     console.log('DePIN node stopped gracefully\n')
     process.exit(0)
