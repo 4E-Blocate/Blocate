@@ -16,7 +16,6 @@ export default function Login() {
   const [defaultAccount, setDefaultAccount] = useState<string | null>(null);
   const [userBalance, setUserBalance] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number>(5);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading state
   const router = useRouter();
 
   // This effect checks for an existing connection on page load
@@ -49,17 +48,10 @@ export default function Login() {
             } catch (e) {
               console.warn("Error fetching guardian name:", e);
             }
-          } else {
-            // If no accounts are authorized, show the login page
-            setIsLoading(false);
           }
         } catch (err) {
           console.error("Error checking for connection:", err);
-          setIsLoading(false); // Show login page on error
         }
-      } else {
-        // MetaMask not installed
-        setIsLoading(false);
       }
     };
 
@@ -114,16 +106,6 @@ export default function Login() {
       };
     }
   }, [defaultAccount, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-100">
-        <p className="text-lg font-semibold text-[#0C3B5E]">
-          Checking wallet status...
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row">

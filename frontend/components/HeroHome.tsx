@@ -16,7 +16,7 @@ function HeroHome() {
 
             <div className="flex flex-col md:flex-row items-center gap-8 mt-4 mb-20">
                 {/* Main CTA */}
-                <Link href="/patient" className="bg-[#1D1D1F] text-white px-8 py-4 rounded-2xl font-semibold text-lg flex items-center gap-3 hover:scale-105 transition-transform duration-200 shadow-xl shadow-black/10">
+                <Link href="/login" className="bg-[#1D1D1F] text-white px-8 py-4 rounded-2xl font-semibold text-lg flex items-center gap-3 hover:scale-105 transition-transform duration-200 shadow-xl shadow-black/10">
                     <LayoutDashboard size={24} className="fill-current" />
                     <span>Get Started</span>
                 </Link>

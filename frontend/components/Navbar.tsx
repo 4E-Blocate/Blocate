@@ -27,7 +27,7 @@ function Navbar() {
                 />
 
                 <div className="flex items-center gap-6">
-                    <Link href="/patient" className="bg-[#EAE6DF] hover:bg-[#dcd8d1] transition-colors text-[#1D1D1F] px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2">
+                    <Link href="/login" className="bg-[#EAE6DF] hover:bg-[#dcd8d1] transition-colors text-[#1D1D1F] px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2">
                         <LayoutDashboard size={20} className="fill-current" />
                         <span>Dashboard</span>
                     </Link>
