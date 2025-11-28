@@ -274,7 +274,7 @@ export default function PatientDetailsPage() {
             </div>
           </div>
 
-          <div className="w-full flex gap-6">
+                    <div className="w-full flex flex-col md:flex-row gap-6">
             <div className="w-full">
               <label className="text-sm">Lokasi Rumah (Birthplace)</label>
               <div className="h-12 relative">
@@ -349,26 +349,29 @@ export default function PatientDetailsPage() {
           <h2 className="text-3xl font-semibold">Informasi Pasien</h2>
 
           {/* Health */}
-          <div className="flex justify-around w-full text-center">
+          <div className="flex flex-col md:flex-row justify-around w-full text-center gap-4">
             {/* Heart Rate */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Heart className="size-14 text-red-500" />
+            <div className="flex flex-col md:flex-row justify-around w-full text-center gap-4">
+            {/* Heart Rate */}
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Heart className="size-8 md:size-14 text-red-500" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
                   Heart Rate <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">
+                <h1 className="text-2xl md:text-3xl font-semibold">
                   {payload.heartRate} <span className="text-xl">bpm</span>
                 </h1>
                 <div
-                  className={`${payload.heartRateStatus === "Kritis"
-                    ? "bg-red-600"
-                    : payload.heartRateStatus === "Prihatin"
+                  className={`${
+                    payload.heartRateStatus === "Kritis"
+                      ? "bg-red-600"
+                      : payload.heartRateStatus === "Prihatin"
                       ? "bg-[#FFDB43]"
                       : "bg-[#84EBB4]"
-                    } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
+                  } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
                 >
                   {payload.heartRateStatus}
                 </div>
@@ -376,9 +379,9 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* SpO2 Level */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Droplets className="size-14 text-blue-600" />
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Droplets className="size-8 md:size-14 text-blue-600" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
@@ -388,14 +391,17 @@ export default function PatientDetailsPage() {
                   Level
                   <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">{payload.SpO2}%</h1>
+                <h1 className="text-2xl md:text-3xl font-semibold">
+                  {payload.SpO2}%
+                </h1>
                 <div
-                  className={`${payload.SpO2Status === "Kritis"
-                    ? "bg-red-600"
-                    : payload.SpO2Status === "Prihatin"
+                  className={`${
+                    payload.SpO2Status === "Kritis"
+                      ? "bg-red-600"
+                      : payload.SpO2Status === "Prihatin"
                       ? "bg-[#FFDB43]"
                       : "bg-[#84EBB4]"
-                    } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
+                  } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
                 >
                   {payload.SpO2Status}
                 </div>
@@ -403,24 +409,25 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* Body Temperature */}
-            <div className="w-1/3 flex max-lg:flex-col items-center gap-3">
-              <div className="p-4 rounded-2xl border-2 border-[#02476D] w-fit">
-                <Thermometer className="size-14 text-yellow-500" />
+            <div className="w-full md:w-1/3 flex flex-row md:flex-col items-center gap-3">
+              <div className="p-2 md:p-4 rounded-2xl border-2 border-[#02476D] w-fit">
+                <Thermometer className="size-8 md:size-14 text-yellow-500" />
               </div>
               <div className="flex flex-col justify-between">
                 <div className="flex text-sm items-center gap-1 justify-center">
                   BodyTemp <Info className="size-4" />
                 </div>
-                <h1 className="text-3xl font-semibold">
+                <h1 className="text-2xl md:text-3xl font-semibold">
                   {payload.bodyTemperature} <span className="text-xl">°C</span>
                 </h1>
                 <div
-                  className={`${payload.bodyTemperatureStatus === "Kritis"
-                    ? "bg-red-600"
-                    : payload.bodyTemperatureStatus === "Prihatin"
+                  className={`${
+                    payload.bodyTemperatureStatus === "Kritis"
+                      ? "bg-red-600"
+                      : payload.bodyTemperatureStatus === "Prihatin"
                       ? "bg-[#FFDB43]"
                       : "bg-[#84EBB4]"
-                    } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
+                  } text-black text-sm w-fit px-3 py-0.5 rounded-full mx-auto`}
                 >
                   {payload.bodyTemperatureStatus}
                 </div>
@@ -439,12 +446,13 @@ export default function PatientDetailsPage() {
               <div className="flex gap-2 items-center">
                 {payload.distance} m
                 <div
-                  className={`${payload.distanceStatus === "Kritis"
-                    ? "bg-red-600"
-                    : payload.distanceStatus === "Prihatin"
+                  className={`${
+                    payload.distanceStatus === "Kritis"
+                      ? "bg-red-600"
+                      : payload.distanceStatus === "Prihatin"
                       ? "bg-[#FFDB43]"
                       : "bg-[#84EBB4]"
-                    } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
+                  } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
                 >
                   {payload.distanceStatus}
                 </div>
@@ -474,7 +482,7 @@ export default function PatientDetailsPage() {
               </div>
             </div>
 
-            <div className="w-full flex gap-6">
+            <div className="w-full flex flex-col md:flex-row gap-6">
               {/* Status */}
               <div className="w-full">
                 <label className="text-sm">Status</label>
@@ -501,14 +509,15 @@ export default function PatientDetailsPage() {
             </div>
 
             {/* Summary */}
-            <div className="flex items-center gap-4 text-black font-semibold">
+            <div className="flex flex-col md:flex-row items-center gap-4 text-black font-semibold">
               <div
-                className={`${llmPayload.status === "Kritis"
-                  ? "bg-red-600"
-                  : llmPayload.status === "Prihatin"
+                className={`${
+                  llmPayload.status === "Kritis"
+                    ? "bg-red-600"
+                    : llmPayload.status === "Prihatin"
                     ? "bg-[#FFDB43]"
                     : "bg-[#84EBB4]"
-                  } text-black text-2xl w-fit px-4 py-2 rounded-xl font-semibold`}
+                } text-black text-2xl w-fit px-4 py-2 rounded-xl font-semibold`}
               >
                 {llmPayload.status}
               </div>
@@ -529,12 +538,13 @@ export default function PatientDetailsPage() {
                   </div>
                   <div className="flex flex-col justify-between">
                     <div
-                      className={`${payload.heartRateStatus === "Kritis"
-                        ? "bg-red-600"
-                        : payload.heartRateStatus === "Prihatin"
+                      className={`${
+                        payload.heartRateStatus === "Kritis"
+                          ? "bg-red-600"
+                          : payload.heartRateStatus === "Prihatin"
                           ? "bg-[#FFDB43]"
                           : "bg-[#84EBB4]"
-                        } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
+                      } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
                     >
                       {payload.heartRateStatus}
                     </div>
@@ -553,12 +563,13 @@ export default function PatientDetailsPage() {
                   </div>
                   <div className="flex flex-col justify-between">
                     <div
-                      className={`${payload.SpO2Status === "Kritis"
-                        ? "bg-red-600"
-                        : payload.SpO2Status === "Prihatin"
+                      className={`${
+                        payload.SpO2Status === "Kritis"
+                          ? "bg-red-600"
+                          : payload.SpO2Status === "Prihatin"
                           ? "bg-[#FFDB43]"
                           : "bg-[#84EBB4]"
-                        } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
+                      } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
                     >
                       {payload.SpO2Status}
                     </div>
@@ -575,12 +586,13 @@ export default function PatientDetailsPage() {
                   </div>
                   <div className="flex flex-col justify-between">
                     <div
-                      className={`${payload.bodyTemperatureStatus === "Kritis"
-                        ? "bg-red-600"
-                        : payload.bodyTemperatureStatus === "Prihatin"
+                      className={`${
+                        payload.bodyTemperatureStatus === "Kritis"
+                          ? "bg-red-600"
+                          : payload.bodyTemperatureStatus === "Prihatin"
                           ? "bg-[#FFDB43]"
                           : "bg-[#84EBB4]"
-                        } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
+                      } text-black text-sm w-fit px-3 py-0.5 rounded-full`}
                     >
                       {payload.bodyTemperatureStatus}
                     </div>
@@ -599,22 +611,22 @@ export default function PatientDetailsPage() {
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col md:flex-row justify-end gap-3">
             <button
               type="button"
-              className="w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
+              className="w-full md:w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
             >
               Update <RefreshCcw />
             </button>
             <button
               type="button"
-              className="w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
+              className="w-full md:w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
             >
               Simpan <Save />
             </button>
             <button
               type="button"
-              className="w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
+              className="w-full md:w-fit text-xs sm:text-md flex items-center gap-1 sm:gap-3 justify-center py-3 px-2 sm:px-4 border border-transparent rounded-xl shadow-sm text-white bg-[#02476D] font-medium hover:bg-[#023c5c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0C3B5E] transition-colors duration-200"
             >
               Lihat History <History />
             </button>

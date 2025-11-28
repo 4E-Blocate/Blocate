@@ -126,7 +126,7 @@ export default function Setup() {
   };
 
   return (
-    <div className="min-h-screen w-full">
+    <div className="min-h-screen w-full flex flex-col md:flex-row">
       {/* Left Panel: Branding & Pattern */}
       <div className="h-screen hidden md:flex md:w-1/2 bg-[#02476D] fixed top-0 left-0 flex-col items-center justify-center p-12 overflow-hidden text-white z-10">
         <div className="absolute inset-0">
