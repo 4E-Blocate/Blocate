@@ -134,22 +134,33 @@ export async function sendTelegramNotification(telegramChatId, alert) {
     return
   }
 
-  const { deviceId, patientName, alertType, message, bpm, temp, gps } = alert
+  const { deviceId, patientName, alertType, message, bpm, temp, spo2, gps, guardianAddress } = alert
 
   let emoji = '⚠️'
   if (alertType === 'critical') emoji = '🚨'
   if (alertType === 'geofence') emoji = '📍'
 
+  // Build vital signs section
+  let vitalsText = `📊 *Vital Signs:*
+❤️ Heart Rate: *${bpm} BPM* ${bpm > 120 || bpm < 50 ? '⚠️ ABNORMAL' : '✓'}
+🌡️ Temperature: *${temp}°C* ${temp > 38 || temp < 35.5 ? '⚠️ ABNORMAL' : '✓'}`
+
+  // Add SpO2 if available
+  if (spo2 !== undefined) {
+    vitalsText += `\n🫁 Blood O₂: *${spo2}%* ${spo2 < 95 ? '⚠️ LOW' : '✓'}`
+  }
+
+  // Add guardian info if this is an admin notification
+  const guardianInfo = guardianAddress ? `\n👨‍⚕️ *Guardian:* \`${guardianAddress}\`` : ''
+
   const text = `
 ${emoji} *PATIENT ALERT: ${alertType.toUpperCase()}*
 
 👤 *Patient:* ${patientName || 'Unknown'}
-🔖 *Device:* \`${deviceId}\`
+🔖 *Device:* \`${deviceId}\`${guardianInfo}
 🕐 *Time:* ${new Date().toLocaleString()}
 
-📊 *Vital Signs:*
-❤️ Heart Rate: *${bpm} BPM* ${bpm > 120 || bpm < 50 ? '⚠️ ABNORMAL' : '✓'}
-🌡️ Temperature: *${temp}°C* ${temp > 38 || temp < 35.5 ? '⚠️ ABNORMAL' : '✓'}
+${vitalsText}
 
 💡 *Reason:* ${message}
 ${gps ? `\n📍 [View Location on Map](https://www.google.com/maps?q=${gps})` : ''}
@@ -243,6 +254,11 @@ export async function notifyGuardian(deviceId, alertData) {
       timestamp: alertData.timestamp || Date.now(),
       aiInterpretation: alertData.aiInterpretation
     }
+    
+    // Include SpO2 if available
+    if (alertData.spo2 !== undefined) {
+      alert.spo2 = alertData.spo2
+    }
 
     console.log(`\n🔔 NOTIFYING GUARDIAN: ${guardianAddress}`)
     console.log(`   Patient: ${alert.patientName}`)
@@ -260,11 +276,23 @@ export async function notifyGuardian(deviceId, alertData) {
       )
     }
 
-    // 2. Telegram
+    // 2. Telegram - Send to guardian if they have registered their chat ID
     if (config.TELEGRAM_ENABLED && contacts.telegramChatId) {
       notifications.push(
         sendTelegramNotification(contacts.telegramChatId, alert).catch(err =>
           console.error('Telegram notification failed:', err.message)
+        )
+      )
+    }
+
+    // 3. Telegram - ALWAYS send to admin chat ID if configured (for all alerts)
+    if (config.TELEGRAM_ENABLED && config.TELEGRAM_CHAT_ID) {
+      notifications.push(
+        sendTelegramNotification(config.TELEGRAM_CHAT_ID, {
+          ...alert,
+          guardianAddress: guardianAddress // Include guardian info for admin
+        }).catch(err =>
+          console.error('Telegram admin notification failed:', err.message)
         )
       )
     }
@@ -291,6 +319,8 @@ function determineAlertMessage(data) {
   if (data.bpm < 50) messages.push(`Low heart rate (${data.bpm} BPM)`)
   if (data.temp > 38) messages.push(`High temperature (${data.temp}°C)`)
   if (data.temp < 35.5) messages.push(`Low temperature (${data.temp}°C)`)
+  if (data.spo2 !== undefined && data.spo2 < 90) messages.push(`Critical blood oxygen (${data.spo2}%)`)
+  if (data.spo2 !== undefined && data.spo2 >= 90 && data.spo2 < 95) messages.push(`Low blood oxygen (${data.spo2}%)`)
   if (data.geofenceViolation) messages.push('Patient left safe zone')
   if (data.isManualAlert) messages.push('Emergency button pressed')
 

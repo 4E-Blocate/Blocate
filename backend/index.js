@@ -128,7 +128,12 @@ async function initializeDePINNode() {
 
     console.log(`\nNotifications:`)
     console.log(`   WebSocket: ${config.WEBSOCKET_ENABLED ? `Enabled (port ${config.WEBSOCKET_PORT})` : 'Disabled'}`)
-    console.log(`   Telegram: ${config.TELEGRAM_ENABLED ? 'Enabled (all alerts → admin)' : 'Disabled'}`)
+    if (config.TELEGRAM_ENABLED) {
+      console.log(`   Telegram: Enabled`)
+      console.log(`   Admin Chat ID: ${config.TELEGRAM_CHAT_ID || 'Not configured'}`)
+    } else {
+      console.log(`   Telegram: Disabled`)
+    }
 
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('DePIN Node Running')

@@ -39,7 +39,8 @@ export const config = {
 
   // Telegram Notifications
   TELEGRAM_ENABLED: process.env.TELEGRAM_ENABLED === 'true',
-  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || ''
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
+  TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || '' // Admin chat ID for all alerts
 }
 
 // Validation
