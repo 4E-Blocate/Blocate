@@ -3,6 +3,7 @@ import { interpretHealthData } from './aiClient.js'
 import { storeEvent } from './gunClient.js'
 import { logEventToChain, isDeviceRegistered, getDeviceInfo } from './tonBlockchain.js'
 import { calculateDistance } from './utils/geo.js'
+import { notifyGuardian } from './notificationService.js'
 
 /**
  * Process incoming telemetry data from IoT device
@@ -29,6 +30,7 @@ export async function processTelemetry(payload) {
 
     // Determine event type based on vitals
     let eventType = determineEventType(bpm, temp, gps)
+    let geofenceViolation = false
     
     // --- Geofencing Logic ---
     if (registered) {
@@ -44,6 +46,7 @@ export async function processTelemetry(payload) {
                 // 3. Threshold check (e.g., 0.5km / 500 meters)
                 if (distKm > 0.5) {
                     console.warn(`   ⚠️ PATIENT OUTSIDE GEOFENCE!`);
+                    geofenceViolation = true
                     // Override event type to alert guardian
                     if (eventType === 'normal') eventType = 'alert';
                 }
@@ -73,6 +76,7 @@ export async function processTelemetry(payload) {
       timestamp: timestamp || Date.now(),
       eventType,
       aiInterpretation,
+      geofenceViolation,
       processedBy: 'depin-node',
       processedAt: Date.now()
     }
@@ -84,14 +88,23 @@ export async function processTelemetry(payload) {
 
     // Log to blockchain ONLY for alerts and critical events (save gas)
     let blockchainResult = null
-    if (registered && (eventType === 'alert' || eventType === 'critical')) {
+    if (eventType === 'alert' || eventType === 'critical') {
+      if (registered) {
+        try {
+          console.log(`Logging ${eventType} event to blockchain...`)
+          blockchainResult = await logEventToChain(deviceId, eventData, eventType)
+          console.log(`⛓️  Event logged to blockchain`)
+        } catch (error) {
+          console.error(`Blockchain logging failed: ${error.message}`)
+        }
+      }
+      
+      // ALWAYS NOTIFY GUARDIAN for alerts and critical events (even if not on blockchain)
       try {
-        console.log(`Logging ${eventType} event to blockchain...`)
-        blockchainResult = await logEventToChain(deviceId, eventData, eventType)
-        console.log(`⛓️  Event logged to blockchain`)
+        console.log(`Triggering guardian notifications...`)
+        await notifyGuardian(deviceId, eventData)
       } catch (error) {
-        console.error(`Blockchain logging failed: ${error.message}`)
-        // Continue anyway - data is still in GunDB
+        console.error(`Notification failed: ${error.message}`)
       }
     } else if (registered && eventType === 'normal') {
       console.log(`ℹ️  Normal event - skipping blockchain (saved gas)`)
@@ -152,6 +165,11 @@ export async function processAlert(payload) {
           'critical'
         )
         console.log(`⛓️  Alert logged to blockchain`)
+        
+        // NOTIFY GUARDIAN for manual alerts
+        console.log(`Triggering guardian notifications...`)
+        await notifyGuardian(payload.deviceId, eventData)
+        
       } catch (error) {
         console.error(`Failed to log alert to blockchain: ${error.message}`)
       }
