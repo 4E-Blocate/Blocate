@@ -167,6 +167,35 @@ contract DeviceRegistry is IDeviceRegistry {
     }
     
     /**
+     * @notice Change guardian on behalf of patient (called from PatientMonitor)
+     * @param deviceId Device to update
+     * @param newGuardian New guardian wallet address
+     * @param patient Patient address to verify
+     */
+    function changeGuardianFor(
+        string memory deviceId,
+        address newGuardian,
+        address patient
+    ) external deviceExists(deviceId) {
+        require(
+            devices[deviceId].patient == patient,
+            "DeviceRegistry: Only patient can change guardian"
+        );
+        require(
+            newGuardian != address(0),
+            "DeviceRegistry: Invalid guardian address"
+        );
+        
+        address oldGuardian = devices[deviceId].guardian;
+        devices[deviceId].guardian = newGuardian;
+        
+        // Add to new guardian's list
+        guardianDevices[newGuardian].push(deviceId);
+        
+        emit GuardianChanged(deviceId, oldGuardian, newGuardian, block.timestamp);
+    }
+    
+    /**
      * @notice Deactivate a device
      * @dev Can be called by patient or guardian. Gas-optimized with memory caching.
      * @param deviceId Device to deactivate
