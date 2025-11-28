@@ -112,6 +112,7 @@ export default function Setup() {
       await tx.wait();
       setStatusMessage(`Success! Your guardian name is set to "${fullName}".`);
       setFormData({ firstName: "", lastName: "" });
+      router.push("/patient");
     } catch (error: any) {
       console.error("Error setting guardian name:", error);
       if (error.code === "ACTION_REJECTED") {
