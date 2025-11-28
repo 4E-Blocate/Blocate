@@ -12,7 +12,7 @@ import { notifyGuardian } from './notificationService.js'
  */
 export async function processTelemetry(payload) {
   try {
-    const { deviceId, bpm, temp, gps, timestamp } = payload
+    const { deviceId, bpm, temp, spo2, gps, timestamp } = payload
 
     // Validate data
     if (!deviceId || bpm === undefined || temp === undefined) {
@@ -20,7 +20,11 @@ export async function processTelemetry(payload) {
     }
 
     console.log(`\nProcessing telemetry for ${deviceId}`)
-    console.log(`   BPM: ${bpm}, Temp: ${temp}°C, GPS: ${gps}`)
+    if (spo2 !== undefined) {
+      console.log(`   BPM: ${bpm}, Temp: ${temp}°C, SpO2: ${spo2}%, GPS: ${gps}`)
+    } else {
+      console.log(`   BPM: ${bpm}, Temp: ${temp}°C, GPS: ${gps}`)
+    }
 
     // Check if device is registered on blockchain
     const registered = await isDeviceRegistered(deviceId)
@@ -62,7 +66,9 @@ export async function processTelemetry(payload) {
     // Get AI interpretation (optional)
     let aiInterpretation = null
     try {
-      aiInterpretation = await interpretHealthData({ bpm, temp, gps })
+      const healthData = { bpm, temp, gps }
+      if (spo2 !== undefined) healthData.spo2 = spo2
+      aiInterpretation = await interpretHealthData(healthData)
     } catch (error) {
       console.warn('   AI interpretation failed, continuing without it')
     }
@@ -79,6 +85,11 @@ export async function processTelemetry(payload) {
       geofenceViolation,
       processedBy: 'depin-node',
       processedAt: Date.now()
+    }
+    
+    // Only include SpO2 if it was provided
+    if (spo2 !== undefined) {
+      eventData.spo2 = spo2
     }
 
     // Store full data in GunDB
@@ -210,6 +221,7 @@ export function validateTelemetryData(data) {
   // Validate ranges
   if (data.bpm < 0 || data.bpm > 250) return false
   if (data.temp < 30 || data.temp > 45) return false
+  if (data.spo2 !== undefined && (data.spo2 < 70 || data.spo2 > 100)) return false
 
   return true
 }

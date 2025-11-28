@@ -1,76 +1,15 @@
 import { ethers } from 'ethers';
 
-// Configuration - UPDATE THIS AFTER DEPLOYMENT!
+// Configuration
 const CONFIG = {
-  CONTRACT_ADDRESS: "0x717CD91f1C0897CEc98e3e1F85d3Cd6FE7D73C4B", // Replace with your deployed address
-  SEPOLIA_CHAIN_ID: "0xaa36a7", // 11155111 in decimal
-  SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo", // Public RPC for fallback
-  GUNDB_PEERS: ['http://localhost:8765/gun'], // GunDB relay server from backend
-  WEBSOCKET_URL: 'ws://localhost:8080/notifications' // WebSocket notification server
+  CONTRACT_ADDRESS: "0x717CD91f1C0897CEc98e3e1F85d3Cd6FE7D73C4B",
+  SEPOLIA_CHAIN_ID: "0xaa36a7",
+  SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo",
+  GUNDB_PEERS: ['http://localhost:8765/gun'],
+  WEBSOCKET_URL: 'ws://localhost:8080/notifications'
 };
 
-// Initialize GunDB
-let gun = null;
-let sensorDataListener = null;
-
-// WebSocket for real-time notifications
-let notificationWS = null;
-let notificationQueue = [];
-
-// Try to load Gun if available
-async function initGunDB() {
-  try {
-    // Check if Gun is already loaded
-    if (typeof Gun !== 'undefined') {
-      gun = Gun({
-        peers: CONFIG.GUNDB_PEERS,
-        localStorage: false,
-        radisk: false
-      });
-      console.log('✅ GunDB initialized with peers:', CONFIG.GUNDB_PEERS);
-      subscribeToSensorData();
-    } else {
-      console.warn('⚠️ Gun library not loaded. Loading from CDN...');
-      // Dynamically load Gun script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/gun/gun.js';
-      script.onload = () => {
-        gun = Gun({
-          peers: CONFIG.GUNDB_PEERS,
-          localStorage: false,
-          radisk: false
-        });
-        console.log('✅ GunDB initialized with peers:', CONFIG.GUNDB_PEERS);
-        subscribeToSensorData();
-      };
-      script.onerror = () => {
-        console.error('❌ Failed to load Gun library');
-      };
-      document.head.appendChild(script);
-    }
-  } catch (error) {
-    console.warn('⚠️ GunDB initialization failed:', error.message);
-  }
-}
-
-// Subscribe to real-time sensor data from GunDB
-function subscribeToSensorData() {
-  if (!gun) return;
-  
-  console.log('📡 Subscribing to GunDB events...');
-  
-  // Listen to all patient telemetry events
-  gun.get('events').map().on((data, key) => {
-    if (data && data.deviceId) {
-      console.log('📥 Received sensor data:', data);
-      updateSensorDisplay(data);
-    }
-  });
-  
-  console.log('✅ Listening for sensor data from GunDB');
-}
-
-// Contract ABI - Minimal interface for our needs
+// Contract ABI
 const CONTRACT_ABI = [
   "function registerDevice(string deviceId, address guardian, string fullName, uint8 age, string homeLocation)",
   "function getDevice(string deviceId) view returns (tuple(string deviceId, address patient, address guardian, string fullName, uint8 age, string homeLocation, bool isActive, uint256 registeredAt))",
@@ -93,126 +32,100 @@ let provider = null;
 let signer = null;
 let contract = null;
 let userAddress = null;
+let gun = null;
+let map = null;
+let homeMarker = null;
+let currentMarker = null;
+let safeZoneCircle = null;
+let bpmChart = null;
+let tempChart = null;
+let selectedDeviceId = null; // Track which patient is being monitored
+let guardianPatients = []; // List of patients assigned to the logged-in guardian
 
-// DOM Elements
-const connectBtn = document.getElementById('connectBtn');
-const disconnectBtn = document.getElementById('disconnectBtn');
-const walletStatus = document.getElementById('walletStatus');
-const registerForm = document.getElementById('registerForm');
-const getDeviceBtn = document.getElementById('getDeviceBtn');
-const getEventsBtn = document.getElementById('getEventsBtn');
-const getMyDevicesBtn = document.getElementById('getMyDevicesBtn');
-const getMyPatientsBtn = document.getElementById('getMyPatientsBtn');
-const deviceInfo = document.getElementById('deviceInfo');
-const eventsOutput = document.getElementById('eventsOutput');
-const multiDeviceOutput = document.getElementById('multiDeviceOutput');
-const contractAddress = document.getElementById('contractAddress');
-const networkName = document.getElementById('networkName');
-const setGuardianNameBtn = document.getElementById('setGuardianNameBtn');
-const guardianNameInput = document.getElementById('guardianNameInput');
-const guardianNameStatus = document.getElementById('guardianNameStatus');
-const changeGuardianBtn = document.getElementById('changeGuardianBtn');
-const changeGuardianDeviceId = document.getElementById('changeGuardianDeviceId');
-const newGuardianAddress = document.getElementById('newGuardianAddress');
-const changeGuardianStatus = document.getElementById('changeGuardianStatus');
+// Vital sign history for charts
+const vitalHistory = {
+  bpm: [],
+  temp: [],
+  spo2: [],
+  timestamps: [],
+  maxPoints: 20
+};
 
-// Initialize
-init();
+// Initialize app
+document.addEventListener('DOMContentLoaded', init);
 
 function init() {
-  // Display contract address
-  contractAddress.textContent = CONFIG.CONTRACT_ADDRESS;
+  console.log('Initializing Blocate Patient Guardian DePIN...');
   
-  // Initialize GunDB for real-time sensor data
+  // Setup navigation
+  setupNavigation();
+  
+  // Setup wallet connection
+  setupWallet();
+  
+  // Initialize GunDB for real-time data
   initGunDB();
   
-  // Check if MetaMask is installed
-  if (typeof window.ethereum === 'undefined') {
-    walletStatus.innerHTML = '<span class="status-icon">⚠️</span><span class="status-text">Please install MetaMask</span>';
-    connectBtn.disabled = true;
-    return;
-  }
-
+  // Initialize map
+  initMap();
+  
+  // Initialize charts
+  initCharts();
+  
   // Setup event listeners
-  connectBtn.addEventListener('click', connectWallet);
-  disconnectBtn.addEventListener('click', disconnectWallet);
-  registerForm.addEventListener('submit', handleRegister);
-  getDeviceBtn.addEventListener('click', getDeviceInfo);
-  getEventsBtn.addEventListener('click', getDeviceEvents);
-  getMyDevicesBtn.addEventListener('click', getMyDevices);
-  getMyPatientsBtn.addEventListener('click', getMyPatients);
-  setGuardianNameBtn.addEventListener('click', handleSetGuardianName);
-  changeGuardianBtn.addEventListener('click', handleChangeGuardian);
-
-  // Listen for account changes
-  window.ethereum.on('accountsChanged', handleAccountsChanged);
-  window.ethereum.on('chainChanged', () => window.location.reload());
-
-  // Try to connect if already authorized
-  checkIfConnected();
+  setupEventListeners();
+  
+  // Display contract info
+  document.getElementById('contractAddress').textContent = CONFIG.CONTRACT_ADDRESS;
 }
 
-// Update sensor display with real-time data
-function updateSensorDisplay(data) {
-  const bpmValue = document.getElementById('bpmValue');
-  const tempValue = document.getElementById('tempValue');
-  const gpsValue = document.getElementById('gpsValue');
-  const deviceValue = document.getElementById('deviceValue');
-  const lastUpdate = document.getElementById('lastUpdate');
-  const sensorStatus = document.getElementById('sensorStatus');
-  const eventAlert = document.getElementById('eventAlert');
+function setupNavigation() {
+  const navItems = document.querySelectorAll('.nav-item');
+  const sections = document.querySelectorAll('.content-section');
   
-  // Update values
-  bpmValue.textContent = data.bpm || '--';
-  tempValue.textContent = data.temp ? data.temp.toFixed(1) : '--';
-  gpsValue.textContent = data.gps || '--';
-  deviceValue.textContent = data.deviceId || '--';
-  
-  // Update timestamp
-  const now = new Date();
-  lastUpdate.textContent = now.toLocaleTimeString();
-  
-  // Update status badge
-  sensorStatus.classList.add('active');
-  sensorStatus.innerHTML = '<span class="status-dot"></span><span>Receiving live data</span>';
-  
-  // Show alert if event type is not normal
-  if (data.eventType && data.eventType !== 'normal') {
-    eventAlert.style.display = 'flex';
-    const alertText = eventAlert.querySelector('.alert-text');
-    
-    if (data.eventType === 'alert') {
-      alertText.textContent = `⚠️ Alert: Abnormal vitals detected - BPM: ${data.bpm}, Temp: ${data.temp}°C`;
-      eventAlert.style.background = 'rgba(251, 191, 36, 0.2)';
-      eventAlert.style.borderColor = '#fbbf24';
-    } else if (data.eventType === 'critical') {
-      alertText.textContent = `🚨 CRITICAL: Immediate attention required - BPM: ${data.bpm}, Temp: ${data.temp}°C`;
-      eventAlert.style.background = 'rgba(239, 68, 68, 0.2)';
-      eventAlert.style.borderColor = '#ef4444';
-    }
-  } else {
-    eventAlert.style.display = 'none';
-  }
-  
-  // Visual feedback - flash the updated card
-  const cards = document.querySelectorAll('.sensor-card');
-  cards.forEach(card => {
-    card.style.animation = 'none';
-    setTimeout(() => {
-      card.style.animation = 'cardFlash 0.5s ease';
-    }, 10);
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetSection = item.dataset.section;
+      
+      // Update active nav item
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+      
+      // Show target section
+      sections.forEach(section => section.classList.remove('active'));
+      document.getElementById(targetSection).classList.add('active');
+    });
   });
 }
 
-// Add CSS animation for card flash
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes cardFlash {
-    0%, 100% { background: rgba(255, 255, 255, 0.15); }
-    50% { background: rgba(255, 255, 255, 0.3); }
+function setupWallet() {
+  const connectBtn = document.getElementById('connectBtn');
+  const disconnectBtn = document.getElementById('disconnectBtn');
+  
+  if (typeof window.ethereum === 'undefined') {
+    document.getElementById('walletStatus').innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+      <span class="wallet-text">Please install MetaMask</span>
+    `;
+    connectBtn.disabled = true;
+    return;
   }
-`;
-document.head.appendChild(style);
+  
+  connectBtn.addEventListener('click', connectWallet);
+  disconnectBtn.addEventListener('click', disconnectWallet);
+  
+  // Listen for account changes
+  window.ethereum.on('accountsChanged', handleAccountsChanged);
+  window.ethereum.on('chainChanged', () => window.location.reload());
+  
+  // Try to connect if already authorized
+  checkIfConnected();
+}
 
 async function checkIfConnected() {
   try {
@@ -227,402 +140,577 @@ async function checkIfConnected() {
 
 async function connectWallet() {
   try {
-    // Request account access
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     
-    // Create provider and signer
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
-
-    // Check network
+    
     const network = await provider.getNetwork();
-    networkName.textContent = network.name === 'sepolia' ? 'Sepolia Testnet' : `${network.name} (Chain ID: ${network.chainId})`;
-
+    const networkName = network.name === 'sepolia' ? 'Sepolia Testnet' : network.name;
+    
+    // Update network badges
+    document.getElementById('networkName').textContent = networkName;
+    document.getElementById('networkNameSettings').textContent = networkName;
+    document.getElementById('connectedWallet').textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+    
     // Check if on Sepolia
     if (network.chainId !== 11155111n) {
       const switchNetwork = confirm('Please switch to Sepolia Testnet. Switch now?');
       if (switchNetwork) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: CONFIG.SEPOLIA_CHAIN_ID }],
-          });
-          window.location.reload();
-          return;
-        } catch (error) {
-          console.error('Failed to switch network:', error);
-          alert('Failed to switch network. Please switch to Sepolia manually.');
-          return;
-        }
-      } else {
-        alert('This app requires Sepolia Testnet.');
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: CONFIG.SEPOLIA_CHAIN_ID }],
+        });
+        window.location.reload();
         return;
       }
     }
-
+    
     // Create contract instance
     contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONTRACT_ABI, signer);
     
-    // Get DeviceRegistry contract address and create instance for guardian name
+    // Get DeviceRegistry contract for guardian name
     const deviceRegistryAddress = await contract.deviceRegistry();
-    console.log('DeviceRegistry address:', deviceRegistryAddress);
-    
     const DEVICE_REGISTRY_ABI = [
       "function setGuardianName(string name)",
       "function getGuardianName(address guardian) view returns (string)"
     ];
-    
     window.deviceRegistryContract = new ethers.Contract(deviceRegistryAddress, DEVICE_REGISTRY_ABI, signer);
-
-    // Update UI
-    walletStatus.innerHTML = `<span class="status-icon">✅</span><span class="status-text">Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(38)}</span>`;
-    walletStatus.className = 'connected';
-    connectBtn.style.display = 'none';
-    disconnectBtn.style.display = 'inline-block';
-
+    
+    // Update wallet UI
+    const walletStatus = document.getElementById('walletStatus');
+    walletStatus.className = 'wallet-connected';
+    walletStatus.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span class="wallet-text">${userAddress.substring(0, 6)}...${userAddress.substring(38)}</span>
+    `;
+    
+    document.getElementById('connectBtn').style.display = 'none';
+    document.getElementById('disconnectBtn').style.display = 'block';
+    
     console.log('Connected to wallet:', userAddress);
-    console.log('Contract:', CONFIG.CONTRACT_ADDRESS);
-
-    // Initialize WebSocket notifications for this guardian
-    initNotificationWebSocket(userAddress);
-
-    // Load current guardian name if set
+    
+    // Load initial data
     await loadCurrentGuardianName();
-
+    await loadMyDevices();
+    await loadMyPatients();
+    
   } catch (error) {
     console.error('Connection error:', error);
     alert('Failed to connect wallet: ' + error.message);
   }
 }
 
-async function loadCurrentGuardianName() {
-  try {
-    console.log('Loading guardian name for:', userAddress);
-    
-    // Use DeviceRegistry contract directly
-    const directContract = window.deviceRegistryContract || contract;
-    const currentName = await directContract.getGuardianName(userAddress);
-    console.log('Guardian name result:', currentName);
-    
-    const displayDiv = document.getElementById('currentGuardianNameDisplay');
-    const displayText = document.getElementById('currentGuardianNameText');
-    
-    if (currentName && currentName.trim() !== '') {
-      displayText.textContent = currentName;
-      displayDiv.style.display = 'block';
-      guardianNameInput.placeholder = `Current: ${currentName}`;
-      console.log('✅ Name displayed:', currentName);
-    } else {
-      displayText.textContent = 'Not set';
-      displayDiv.style.display = 'block';
-      guardianNameInput.placeholder = 'e.g., Dr. Smith, Mom, John Doe';
-      console.log('⚠️ No name set');
-    }
-  } catch (error) {
-    console.error('❌ Error loading guardian name:', error);
-  }
-}
-
 function handleAccountsChanged(accounts) {
-  if (accounts.length === 0) {
-    // User disconnected
-    location.reload();
-  } else if (accounts[0] !== userAddress) {
-    // User switched accounts
+  if (accounts.length === 0 || accounts[0] !== userAddress) {
     location.reload();
   }
 }
 
 function disconnectWallet() {
-  // Reset state
   provider = null;
   signer = null;
   contract = null;
   userAddress = null;
   
-  // Update UI
-  walletStatus.innerHTML = '<span class="status-icon">❌</span><span class="status-text">Wallet Not Connected</span>';
-  walletStatus.className = 'disconnected';
-  connectBtn.style.display = 'inline-block';
-  disconnectBtn.style.display = 'none';
+  const walletStatus = document.getElementById('walletStatus');
+  walletStatus.className = 'wallet-disconnected';
+  walletStatus.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="15" y1="9" x2="9" y2="15"></line>
+      <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>
+    <span class="wallet-text">Not Connected</span>
+  `;
   
-  // Clear results
-  deviceInfo.innerHTML = '';
-  deviceInfo.classList.remove('show');
-  eventsOutput.innerHTML = '';
-  eventsOutput.classList.remove('show');
-  multiDeviceOutput.innerHTML = '';
-  multiDeviceOutput.classList.remove('show');
+  document.getElementById('connectBtn').style.display = 'block';
+  document.getElementById('disconnectBtn').style.display = 'none';
   
   console.log('Wallet disconnected');
 }
 
-// Helper function to get guardian display name
-async function getGuardianDisplayName(guardianAddress) {
-  if (!contract) {
-    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+// Initialize GunDB for real-time sensor data
+async function initGunDB() {
+  try {
+    if (typeof Gun !== 'undefined') {
+      gun = Gun({
+        peers: CONFIG.GUNDB_PEERS,
+        localStorage: false,
+        radisk: false
+      });
+      console.log('GunDB initialized');
+      subscribeToSensorData();
+    }
+  } catch (error) {
+    console.warn('GunDB initialization failed:', error.message);
+  }
+}
+
+function subscribeToSensorData() {
+  if (!gun) return;
+  
+  console.log(' Subscribing to GunDB events...');
+  console.log('GunDB peers:', CONFIG.GUNDB_PEERS);
+  
+  // Listen to all events but filter by selected deviceId
+  gun.get('events').map().on((data, key) => {
+    if (data && typeof data === 'object') {
+      console.log(' Received GunDB event:', key, data);
+      
+      // Check if it has the required fields
+      if (data.deviceId && (data.bpm !== undefined || data.temp !== undefined)) {
+        // FILTER: Only update dashboard if this event is for the selected patient
+        if (!selectedDeviceId) {
+          console.log('⚠️ No patient selected, ignoring event');
+          return;
+        }
+        
+        if (data.deviceId !== selectedDeviceId) {
+          console.log(`⚠️ Event is for ${data.deviceId}, but monitoring ${selectedDeviceId}, ignoring`);
+          return;
+        }
+        
+        console.log('✅ Valid sensor data received for selected patient');
+        updateDashboard(data);
+      } else {
+        console.log('⚠️ Invalid data structure:', data);
+      }
+    }
+  });
+  
+  console.log('✅ Subscribed to sensor data from GunDB');
+  
+  // Also test the connection
+  gun.get('events').once((data) => {
+    console.log('GunDB connection test - events node:', data);
+  });
+}
+
+function updateDashboard(data) {
+  console.log('📊 Updating dashboard with:', data);
+  
+  // Update vital signs
+  if (data.bpm !== undefined) {
+    document.getElementById('bpmValue').textContent = data.bpm;
+    updateVitalStatus('bpm', data.bpm);
   }
   
-  try {
-    const name = await contract.getGuardianName(guardianAddress);
-    if (name && name.trim() !== '') {
-      return `${name} (${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)})`;
+  if (data.temp !== undefined) {
+    document.getElementById('tempValue').textContent = data.temp.toFixed(1);
+    updateVitalStatus('temp', data.temp);
+  }
+  
+  if (data.spo2 !== undefined) {
+    document.getElementById('spo2Value').textContent = data.spo2;
+    updateVitalStatus('spo2', data.spo2);
+  }
+  
+  if (data.deviceId) {
+    document.getElementById('deviceValue').textContent = data.deviceId;
+  }
+  
+  if (data.gps) {
+    document.getElementById('locationStatus').textContent = 'Active';
+    
+    // Update map with location - need to get home location from blockchain
+    if (contract && data.deviceId) {
+      updateMapWithDeviceData(data.deviceId, data.gps);
     }
-    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+  }
+  
+  // Update timestamps
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+  document.getElementById('lastUpdateTime').textContent = `Updated ${now.toLocaleTimeString()}`;
+  
+  // Update device status
+  const deviceStatus = document.getElementById('deviceStatus');
+  deviceStatus.innerHTML = `
+    <span class="status-dot"></span>
+    <span id="deviceStatusText">Online</span>
+  `;
+  deviceStatus.className = 'vital-status normal';
+  
+  // Add data to charts
+  addToVitalHistory(data);
+  
+  // Show alerts if needed
+  if (data.eventType && data.eventType !== 'normal') {
+    showAlert(data);
+  } else if (data.geofenceViolation) {
+    showAlert({
+      ...data,
+      eventType: 'alert'
+    });
+  }
+  
+  console.log('✅ Dashboard updated successfully');
+}
+
+function updateVitalStatus(type, value) {
+  const statusEl = document.getElementById(`${type}Status`);
+  if (!statusEl || value === undefined) return;
+  
+  let status = 'normal';
+  let text = 'Normal';
+  
+  if (type === 'bpm') {
+    if (value < 60 || value > 100) {
+      status = 'warning';
+      text = 'Abnormal';
+    }
+    if (value < 40 || value > 120) {
+      status = 'critical';
+      text = 'Critical';
+    }
+  } else if (type === 'temp') {
+    if (value < 36.1 || value > 37.2) {
+      status = 'warning';
+      text = 'Elevated';
+    }
+    if (value < 35 || value > 38.5) {
+      status = 'critical';
+      text = 'Critical';
+    }
+  } else if (type === 'spo2') {
+    if (value < 95) {
+      status = 'warning';
+      text = 'Low';
+    }
+    if (value < 90) {
+      status = 'critical';
+      text = 'Critical';
+    }
+  }
+  
+  statusEl.className = `vital-status ${status}`;
+  statusEl.textContent = text;
+}
+
+function showAlert(data) {
+  const alertBanner = document.getElementById('alertBanner');
+  const alertText = document.getElementById('alertText');
+  
+  let message = '';
+  if (data.eventType === 'alert') {
+    message = `Alert: Abnormal vitals detected - Heart Rate: ${data.bpm} BPM, Temperature: ${data.temp}°C`;
+    alertBanner.className = 'alert-banner';
+  } else if (data.eventType === 'critical') {
+    message = `CRITICAL: Immediate attention required - Heart Rate: ${data.bpm} BPM, Temperature: ${data.temp}°C`;
+    alertBanner.className = 'alert-banner critical';
+  }
+  
+  alertText.textContent = message;
+  alertBanner.style.display = 'flex';
+}
+
+// Initialize Leaflet map
+function initMap() {
+  map = L.map('map').setView([14.5995, 120.9842], 13);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  
+  console.log('Map initialized');
+}
+
+function updateMapLocation(currentGPS, homeGPS) {
+  if (!map) return;
+  
+  try {
+    const [currentLat, currentLng] = currentGPS.split(',').map(Number);
+    const [homeLat, homeLng] = homeGPS ? homeGPS.split(',').map(Number) : [currentLat, currentLng];
+    
+    console.log('📍 Updating map - Current:', currentLat, currentLng, 'Home:', homeLat, homeLng);
+    
+    // Remove old markers
+    if (homeMarker) map.removeLayer(homeMarker);
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (safeZoneCircle) map.removeLayer(safeZoneCircle);
+    
+    // Add home marker (blue)
+    homeMarker = L.marker([homeLat, homeLng], {
+      icon: L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background: #3b82f6; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>'
+      })
+    }).addTo(map).bindPopup('Home Location');
+    
+    // Add current location marker (red)
+    currentMarker = L.marker([currentLat, currentLng], {
+      icon: L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background: #ef4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>'
+      })
+    }).addTo(map).bindPopup('Current Location');
+    
+    // Add safe zone circle (500m radius)
+    safeZoneCircle = L.circle([homeLat, homeLng], {
+      radius: 500,
+      color: '#3b82f6',
+      fillColor: '#3b82f6',
+      fillOpacity: 0.1,
+      dashArray: '5, 5'
+    }).addTo(map);
+    
+    // Calculate distance
+    const distance = calculateDistance(currentLat, currentLng, homeLat, homeLng);
+    document.getElementById('distanceFromHome').textContent = `${(distance * 1000).toFixed(0)}m from home`;
+    
+    // Update geofence status
+    const geoStatus = document.getElementById('geoStatus');
+    if (distance > 0.5) {
+      geoStatus.className = 'vital-status critical';
+      geoStatus.textContent = 'Outside Safe Zone';
+    } else {
+      geoStatus.className = 'vital-status normal';
+      geoStatus.textContent = 'Within Safe Zone';
+    }
+    
+    // Fit map bounds
+    const bounds = L.latLngBounds([
+      [homeLat, homeLng],
+      [currentLat, currentLng]
+    ]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+    
+    console.log('✅ Map updated successfully');
+    
   } catch (error) {
-    console.error('Error getting guardian name:', error);
-    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+    console.error('Error updating map:', error);
   }
 }
 
-async function getMyDevices() {
-  if (!contract) {
-    alert('Please connect your wallet first!');
-    return;
-  }
-
+// Helper function to fetch device info and update map
+async function updateMapWithDeviceData(deviceId, currentGPS) {
+  if (!contract) return;
+  
   try {
-    getMyDevicesBtn.disabled = true;
-    getMyDevicesBtn.innerHTML = '<span class="loading"></span> Loading...';
+    const device = await contract.getDevice(deviceId);
+    updateMapLocation(currentGPS, device.homeLocation);
+  } catch (error) {
+    console.error('Error fetching device info for map:', error);
+    // Use current location as both if we can't get home location
+    updateMapLocation(currentGPS, currentGPS);
+  }
+}
 
-    const deviceIds = await contract.getPatientDevices(userAddress);
-    console.log('My devices:', deviceIds);
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
-    if (deviceIds.length === 0) {
-      multiDeviceOutput.innerHTML = `
-        <h4>My Registered Devices (0)</h4>
-        <p>You haven't registered any devices yet.</p>
-      `;
-      multiDeviceOutput.classList.add('show');
-      return;
+// Initialize charts
+function initCharts() {
+  const bpmCtx = document.getElementById('bpmChart').getContext('2d');
+  const tempCtx = document.getElementById('tempChart').getContext('2d');
+  
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 300 // Faster animations for better performance
+    },
+    plugins: {
+      legend: { display: false }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false
     }
-
-    // Fetch details for each device
-    let html = `<h4>My Registered Devices (${deviceIds.length})</h4>`;
-    
-    for (const deviceId of deviceIds) {
-      try {
-        const device = await contract.getDevice(deviceId);
-        const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
-        const guardianDisplay = await getGuardianDisplayName(device.guardian);
-        
-        html += `
-          <div class="device-card">
-            <div class="device-header">
-              <strong>📱 ${device.deviceId}</strong>
-              <span class="status-badge ${device.isActive ? 'active' : 'inactive'}">
-                ${device.isActive ? '✅ Active' : '❌ Inactive'}
-              </span>
-            </div>
-            <div class="device-details" style="color: navy !important;">
-              <div><strong>Patient:</strong> ${device.fullName} (${device.age} years)</div>
-              <div><strong>Guardian:</strong> ${guardianDisplay}</div>
-              <div><strong>Home:</strong> ${device.homeLocation}</div>
-              <div><strong>Registered:</strong> ${registeredDate}</div>
-            </div>
-          </div>
-        `;
-      } catch (error) {
-        html += `
-          <div class="device-card error">
-            <strong>${deviceId}</strong>
-            <p>Error loading device info</p>
-          </div>
-        `;
+  };
+  
+  bpmChart = new Chart(bpmCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Heart Rate (BPM)',
+        data: [],
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      ...chartOptions,
+      scales: {
+        y: {
+          beginAtZero: false,
+          min: 40,
+          max: 120,
+          ticks: {
+            stepSize: 20
+          }
+        },
+        x: {
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 6
+          }
+        }
       }
     }
-
-    multiDeviceOutput.innerHTML = html;
-    multiDeviceOutput.classList.add('show');
-
-  } catch (error) {
-    console.error('Error fetching my devices:', error);
-    alert('Failed to fetch your devices: ' + error.message);
-  } finally {
-    getMyDevicesBtn.disabled = false;
-    getMyDevicesBtn.textContent = 'My Registered Devices';
-  }
-}
-
-async function getMyPatients() {
-  if (!contract) {
-    alert('Please connect your wallet first!');
-    return;
-  }
-
-  try {
-    getMyPatientsBtn.disabled = true;
-    getMyPatientsBtn.innerHTML = '<span class="loading"></span> Loading...';
-
-    const deviceIds = await contract.getGuardianDevices(userAddress);
-    console.log('Patients I guard:', deviceIds);
-
-    if (deviceIds.length === 0) {
-      multiDeviceOutput.innerHTML = `
-        <h4>Patients I'm Guarding (0)</h4>
-        <p>You are not assigned as a guardian for any patients yet.</p>
-      `;
-      multiDeviceOutput.classList.add('show');
-      return;
-    }
-
-    // Fetch details for each device
-    let html = `<h4>Patients I'm Guarding (${deviceIds.length})</h4>`;
-    
-    for (const deviceId of deviceIds) {
-      try {
-        const device = await contract.getDevice(deviceId);
-        const eventCount = await contract.getDeviceEventCount(deviceId);
-        const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
-        
-        html += `
-          <div class="device-card guardian" style="color: navy !important;">
-            <div class="device-header" style="color: navy !important;">
-              <strong>🏥 ${device.deviceId}</strong>
-              <span class="status-badge ${device.isActive ? 'active' : 'inactive'}">
-          ${device.isActive ? '✅ Active' : '❌ Inactive'}
-              </span>
-            </div>
-            <div class="device-details" style="color: navy !important;">
-              <div style="color: navy !important;"><strong>Patient:</strong> ${device.fullName} (${device.age} years)</div>
-              <div style="color: navy !important;"><strong>Patient Address:</strong> ${device.patient.substring(0, 6)}...${device.patient.substring(38)}</div>
-              <div style="color: navy !important;"><strong>Home Location:</strong> ${device.homeLocation}</div>
-              <div style="color: navy !important;"><strong>Events Logged:</strong> ${eventCount.toString()}</div>
-              <div style="color: navy !important;"><strong>Registered:</strong> ${registeredDate}</div>
-            </div>
-            <button class="btn btn-sm" onclick="viewPatientEvents('${deviceId}')" style="color: navy !important; background: transparent; border: 1px solid navy;">View Events</button>
-          </div>
-        `;
-      } catch (error) {
-        html += `
-          <div class="device-card error">
-            <strong>${deviceId}</strong>
-            <p>Error loading patient info</p>
-          </div>
-        `;
+  });
+  
+  tempChart = new Chart(tempCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Temperature (°C)',
+        data: [],
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      ...chartOptions,
+      scales: {
+        y: {
+          beginAtZero: false,
+          min: 35,
+          max: 40,
+          ticks: {
+            stepSize: 1
+          }
+        },
+        x: {
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 6
+          }
+        }
       }
     }
+  });
+  
+  console.log('Charts initialized');
+}
 
-    multiDeviceOutput.innerHTML = html;
-    multiDeviceOutput.classList.add('show');
-
-  } catch (error) {
-    console.error('Error fetching my patients:', error);
-    alert('Failed to fetch your patients: ' + error.message);
-  } finally {
-    getMyPatientsBtn.disabled = false;
-    getMyPatientsBtn.textContent = "Patients I'm Guarding";
+function addToVitalHistory(data) {
+  if (!data.bpm && !data.temp && !data.spo2) return;
+  
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  vitalHistory.timestamps.push(time);
+  vitalHistory.bpm.push(data.bpm || null);
+  vitalHistory.temp.push(data.temp || null);
+  vitalHistory.spo2.push(data.spo2 || null);
+  
+  // Keep only last N points
+  if (vitalHistory.timestamps.length > vitalHistory.maxPoints) {
+    vitalHistory.timestamps.shift();
+    vitalHistory.bpm.shift();
+    vitalHistory.temp.shift();
+    vitalHistory.spo2.shift();
+  }
+  
+  // Update charts with better performance
+  if (bpmChart) {
+    bpmChart.data.labels = vitalHistory.timestamps;
+    bpmChart.data.datasets[0].data = vitalHistory.bpm;
+    bpmChart.update('active'); // Use 'active' mode for better performance
+  }
+  
+  if (tempChart) {
+    tempChart.data.labels = vitalHistory.timestamps;
+    tempChart.data.datasets[0].data = vitalHistory.temp;
+    tempChart.update('active');
   }
 }
 
-// Helper function to view events for a specific patient
-window.viewPatientEvents = async function(deviceId) {
-  document.getElementById('queryDeviceId').value = deviceId;
-  await getDeviceEvents();
-  document.getElementById('eventsOutput').scrollIntoView({ behavior: 'smooth' });
+// Setup all event listeners
+function setupEventListeners() {
+  // Register form
+  const registerForm = document.getElementById('registerForm');
+  registerForm.addEventListener('submit', handleRegister);
+  
+  // Query device
+  document.getElementById('getDeviceBtn').addEventListener('click', getDeviceInfo);
+  document.getElementById('getEventsBtn').addEventListener('click', getDeviceEvents);
+  
+  // Guardian settings
+  document.getElementById('setGuardianNameBtn').addEventListener('click', handleSetGuardianName);
+  document.getElementById('changeGuardianBtn').addEventListener('click', handleChangeGuardian);
 }
 
 async function handleRegister(e) {
   e.preventDefault();
-
+  
   if (!contract) {
     alert('Please connect your wallet first!');
     return;
   }
-
+  
   const deviceId = document.getElementById('deviceId').value.trim();
   const patientName = document.getElementById('patientName').value.trim();
   const age = parseInt(document.getElementById('age').value);
   const guardianAddressInput = document.getElementById('guardianAddress').value.trim();
   const homeGPS = document.getElementById('homeGPS').value.trim();
-
-  // Use provided guardian address or default to user's wallet
+  
   const guardianAddress = guardianAddressInput || userAddress;
-
-  // Validate guardian address if provided
+  
   if (guardianAddressInput && !ethers.isAddress(guardianAddressInput)) {
-    alert('Invalid guardian wallet address format!');
+    alert('Invalid guardian wallet address!');
     return;
   }
-
-  // Validate GPS format
+  
   if (!homeGPS.match(/^-?\d+\.?\d*,-?\d+\.?\d*$/)) {
-    alert('Invalid GPS format. Use: latitude,longitude (e.g., 14.5995,120.9842)');
+    alert('Invalid GPS format. Use: latitude,longitude');
     return;
   }
-
+  
   try {
-    console.log('Registering device:', { deviceId, patientName, age, guardianAddress, homeGPS });
-
-    // Check if already registered (with retry for new contracts)
-    let isRegistered = false;
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        isRegistered = await contract.isDeviceRegistered(deviceId);
-        break;
-      } catch (err) {
-        if (err.code === 'BAD_DATA' && retries > 1) {
-          console.log('Contract not ready, waiting 3 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          retries--;
-        } else {
-          throw err;
-        }
-      }
-    }
-    
+    const isRegistered = await contract.isDeviceRegistered(deviceId);
     if (isRegistered) {
       alert(`Device ${deviceId} is already registered!`);
       return;
     }
-
-    // Disable button
-    const submitBtn = registerForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
-
-    // Call contract
-    const tx = await contract.registerDevice(
-      deviceId,
-      guardianAddress, // Can be different from patient
-      patientName,
-      age,
-      homeGPS
-    );
-
-    submitBtn.textContent = 'Waiting for confirmation...';
-    console.log('Transaction sent:', tx.hash);
-
-    // Wait for confirmation
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed:', receipt);
-
-    const guardianNote = guardianAddressInput ? `\nGuardian: ${guardianAddress}` : '\nGuardian: Same as patient (your wallet)';
-    alert(`✅ Device registered successfully!${guardianNote}\n\nTransaction: ${tx.hash}`);
     
-    // Reset form
+    const submitBtn = registerForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    const tx = await contract.registerDevice(deviceId, guardianAddress, patientName, age, homeGPS);
+    console.log('Transaction sent:', tx.hash);
+    
+    submitBtn.textContent = 'Confirming...';
+    await tx.wait();
+    
+    alert(`Device ${deviceId} registered successfully!`);
     registerForm.reset();
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-
+    document.getElementById('registerModal').style.display = 'none';
+    
+    // Reload devices
+    await loadMyDevices();
+    
   } catch (error) {
     console.error('Registration error:', error);
-    
-    let errorMsg = 'Registration failed: ';
-    if (error.code === 'ACTION_REJECTED') {
-      errorMsg += 'Transaction was rejected by user';
-    } else if (error.message.includes('insufficient funds')) {
-      errorMsg += 'Insufficient funds for gas. Get Sepolia ETH from a faucet.';
-    } else {
-      errorMsg += error.message;
-    }
-    
-    alert(errorMsg);
-    
-    // Re-enable button
+    alert('Failed to register device: ' + error.message);
+  } finally {
     const submitBtn = registerForm.querySelector('button[type="submit"]');
     submitBtn.disabled = false;
     submitBtn.textContent = 'Register Device';
@@ -630,168 +718,245 @@ async function handleRegister(e) {
 }
 
 async function getDeviceInfo() {
-  if (!contract) {
-    alert('Please connect your wallet first!');
-    return;
-  }
-
   const deviceId = document.getElementById('queryDeviceId').value.trim();
-  if (!deviceId) {
-    alert('Please enter a device ID');
-    return;
-  }
-
+  if (!deviceId || !contract) return;
+  
   try {
-    getDeviceBtn.disabled = true;
-    getDeviceBtn.innerHTML = '<span class="loading"></span> Loading...';
-
     const device = await contract.getDevice(deviceId);
-    console.log('Device info:', device);
-
-    if (!device.isActive && device.registeredAt === 0n) {
-      deviceInfo.innerHTML = `<h4>Device Not Found</h4><p>Device "${deviceId}" is not registered.</p>`;
-      deviceInfo.classList.add('show');
-      return;
-    }
-
-    const registeredDate = new Date(Number(device.registeredAt) * 1000).toLocaleString();
-
+    const deviceInfo = document.getElementById('deviceInfo');
+    
     deviceInfo.innerHTML = `
       <h4>Device Information</h4>
-      <div class="device-info-item"><strong>Device ID:</strong> ${device.deviceId}</div>
-      <div class="device-info-item"><strong>Patient Name:</strong> ${device.fullName}</div>
-      <div class="device-info-item"><strong>Age:</strong> ${device.age}</div>
-      <div class="device-info-item"><strong>Home Location:</strong> ${device.homeLocation}</div>
-      <div class="device-info-item"><strong>Guardian:</strong> ${device.guardian}</div>
-      <div class="device-info-item"><strong>Patient Wallet:</strong> ${device.patient}</div>
-      <div class="device-info-item"><strong>Registered:</strong> ${registeredDate}</div>
-      <div class="device-info-item"><strong>Status:</strong> ${device.isActive ? '✅ Active' : '❌ Inactive'}</div>
+      <div class="detail-row"><span class="detail-label">Device ID:</span> <span class="detail-value">${device.deviceId}</span></div>
+      <div class="detail-row"><span class="detail-label">Patient:</span> <span class="detail-value">${device.fullName} (${device.age} years)</span></div>
+      <div class="detail-row"><span class="detail-label">Guardian:</span> <span class="detail-value">${device.guardian}</span></div>
+      <div class="detail-row"><span class="detail-label">Home Location:</span> <span class="detail-value">${device.homeLocation}</span></div>
+      <div class="detail-row"><span class="detail-label">Status:</span> <span class="detail-value">${device.isActive ? 'Active' : 'Inactive'}</span></div>
     `;
     deviceInfo.classList.add('show');
-
+    
   } catch (error) {
-    console.error('Error fetching device:', error);
-    alert('Failed to fetch device information: ' + error.message);
-  } finally {
-    getDeviceBtn.disabled = false;
-    getDeviceBtn.textContent = 'Get Device Info';
+    console.error('Error:', error);
+    alert('Error fetching device info');
   }
 }
 
 async function getDeviceEvents() {
-  if (!contract) {
-    alert('Please connect your wallet first!');
-    return;
-  }
-
   const deviceId = document.getElementById('queryDeviceId').value.trim();
-  if (!deviceId) {
-    alert('Please enter a device ID');
-    return;
-  }
-
+  if (!deviceId || !contract) return;
+  
   try {
-    getEventsBtn.disabled = true;
-    getEventsBtn.innerHTML = '<span class="loading"></span> Loading...';
-
-    const events = await contract.getDeviceEvents(deviceId, 20);
-    console.log('Events:', events);
-
-    if (events.length === 0) {
-      eventsOutput.innerHTML = `<h4>No Events Found</h4><p>No events recorded for device "${deviceId}".</p>`;
-      eventsOutput.classList.add('show');
-      return;
-    }
-
-    let html = `<h4>Recent Events (${events.length})</h4>`;
+    const events = await contract.getDeviceEvents(deviceId, 10);
+    const eventsOutput = document.getElementById('eventsOutput');
     
-    events.forEach((event, index) => {
-      const timestamp = new Date(Number(event.timestamp) * 1000).toLocaleString();
-      const eventTypeClass = event.eventType.toLowerCase();
-      
-      html += `
-        <div class="event-item">
-          <strong>Event #${index + 1}</strong>
-          <span class="event-type ${eventTypeClass}">${event.eventType.toUpperCase()}</span>
-          <br>
-          <small><strong>Timestamp:</strong> ${timestamp}</small><br>
-          <small><strong>Data Hash:</strong> <code>${event.dataHash}</code></small><br>
-          <small><strong>Guardian:</strong> ${event.guardian}</small>
+    if (events.length === 0) {
+      eventsOutput.innerHTML = '<p>No events found</p>';
+    } else {
+      let html = '<h4>Recent Events</h4>';
+      events.forEach(event => {
+        const date = new Date(Number(event.timestamp) * 1000).toLocaleString();
+        html += `
+          <div class="event-item">
+            <div class="event-header">
+              <span class="event-type ${event.eventType}">${event.eventType.toUpperCase()}</span>
+              <span class="event-time">${date}</span>
+            </div>
+            <div class="event-details">Hash: ${event.dataHash}</div>
+          </div>
+        `;
+      });
+      eventsOutput.innerHTML = html;
+    }
+    eventsOutput.classList.add('show');
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error fetching events');
+  }
+}
+
+async function loadMyDevices() {
+  if (!contract || !userAddress) return;
+  
+  try {
+    const deviceIds = await contract.getPatientDevices(userAddress);
+    const devicesGrid = document.getElementById('devicesGrid');
+    
+    if (deviceIds.length === 0) {
+      devicesGrid.innerHTML = `
+        <div class="empty-state">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <p>No devices registered</p>
+          <small>Click "Register New Device" to get started</small>
         </div>
       `;
-    });
-
-    eventsOutput.innerHTML = html;
-    eventsOutput.classList.add('show');
-
+      return;
+    }
+    
+    let html = '';
+    for (const deviceId of deviceIds) {
+      const device = await contract.getDevice(deviceId);
+      html += `
+        <div class="device-card">
+          <div class="device-header">
+            <div>
+              <h4>${device.fullName}</h4>
+              <p>${device.deviceId}</p>
+            </div>
+            <span class="device-status ${device.isActive ? 'active' : 'inactive'}">
+              <span class="status-dot"></span>
+              ${device.isActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          <div class="device-details">
+            <div class="detail-row">
+              <span class="detail-label">Age:</span>
+              <span class="detail-value">${device.age} years</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Home:</span>
+              <span class="detail-value">${device.homeLocation}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    devicesGrid.innerHTML = html;
+    
   } catch (error) {
-    console.error('Error fetching events:', error);
-    alert('Failed to fetch events: ' + error.message);
-  } finally {
-    getEventsBtn.disabled = false;
-    getEventsBtn.textContent = 'Get Events';
+    console.error('Error loading devices:', error);
+  }
+}
+
+async function loadMyPatients() {
+  if (!contract || !userAddress) return;
+  
+  try {
+    const deviceIds = await contract.getGuardianDevices(userAddress);
+    const patientsGrid = document.getElementById('patientsGrid');
+    
+    if (deviceIds.length === 0) {
+      patientsGrid.innerHTML = `
+        <div class="empty-state">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+          </svg>
+          <p>No patients assigned</p>
+          <small>Patients will appear when they assign you as guardian</small>
+        </div>
+      `;
+      guardianPatients = [];
+      updatePatientSelector();
+      return;
+    }
+    
+    let html = '';
+    guardianPatients = []; // Reset the list
+    
+    for (const deviceId of deviceIds) {
+      const device = await contract.getDevice(deviceId);
+      const eventCount = await contract.getDeviceEventCount(deviceId);
+      
+      // Store patient info for selector
+      guardianPatients.push({
+        deviceId: device.deviceId,
+        fullName: device.fullName,
+        age: device.age,
+        homeLocation: device.homeLocation
+      });
+      
+      html += `
+        <div class="patient-card">
+          <div class="patient-header">
+            <div class="patient-avatar">${device.fullName.charAt(0).toUpperCase()}</div>
+            <div class="patient-info">
+              <h4>${device.fullName}</h4>
+              <p>${device.deviceId}</p>
+            </div>
+          </div>
+          <div class="patient-details">
+            <div class="detail-row">
+              <span class="detail-label">Age:</span>
+              <span class="detail-value">${device.age} years</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Events:</span>
+              <span class="detail-value">${eventCount.toString()}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Status:</span>
+              <span class="detail-value">${device.isActive ? 'Active' : 'Inactive'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    patientsGrid.innerHTML = html;
+    
+    // Update the patient selector dropdown
+    updatePatientSelector();
+    
+    // Auto-select first patient if none selected
+    if (!selectedDeviceId && guardianPatients.length > 0) {
+      selectPatient(guardianPatients[0].deviceId);
+    }
+    
+  } catch (error) {
+    console.error('Error loading patients:', error);
+  }
+}
+
+async function loadCurrentGuardianName() {
+  if (!contract || !userAddress) return;
+  
+  try {
+    const currentName = await window.deviceRegistryContract.getGuardianName(userAddress);
+    const displayDiv = document.getElementById('currentGuardianNameDisplay');
+    const displayText = document.getElementById('currentGuardianNameText');
+    
+    if (currentName && currentName.trim() !== '') {
+      displayText.textContent = currentName;
+      displayDiv.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error loading guardian name:', error);
   }
 }
 
 async function handleSetGuardianName() {
-  if (!contract || !window.deviceRegistryContract) {
+  if (!contract) {
     alert('Please connect your wallet first!');
     return;
   }
-
-  const name = guardianNameInput.value.trim();
+  
+  const name = document.getElementById('guardianNameInput').value.trim();
   if (!name) {
-    alert('Please enter a display name');
+    alert('Please enter a name');
     return;
   }
-
-  if (name.length > 50) {
-    alert('Name is too long (max 50 characters)');
-    return;
-  }
-
+  
   try {
-    setGuardianNameBtn.disabled = true;
-    setGuardianNameBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
-
-    // Use DeviceRegistry contract directly
+    const btn = document.getElementById('setGuardianNameBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
     const tx = await window.deviceRegistryContract.setGuardianName(name);
-    console.log('Transaction sent:', tx.hash);
-
-    setGuardianNameBtn.textContent = 'Waiting for confirmation...';
+    await tx.wait();
     
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed:', receipt);
-
-    guardianNameStatus.innerHTML = `
-      <div class="success-message">
-        <h4>✅ Guardian Name Set Successfully!</h4>
-        <p><strong>Your Display Name:</strong> ${name}</p>
-        <p><strong>Wallet Address:</strong> ${userAddress}</p>
-        <p>Patients will now see "${name}" instead of just your wallet address.</p>
-        <small>Transaction: ${tx.hash}</small>
-      </div>
-    `;
-    guardianNameStatus.classList.add('show');
-
-    // Clear input and reload name
-    guardianNameInput.value = '';
+    alert('Guardian name updated successfully!');
     await loadCurrentGuardianName();
-
+    
   } catch (error) {
-    console.error('Error setting guardian name:', error);
-    
-    let errorMsg = 'Failed to set guardian name: ';
-    if (error.code === 'ACTION_REJECTED') {
-      errorMsg += 'Transaction was rejected by user';
-    } else {
-      errorMsg += error.message;
-    }
-    
-    alert(errorMsg);
+    console.error('Error:', error);
+    alert('Failed to update name: ' + error.message);
   } finally {
-    setGuardianNameBtn.disabled = false;
-    setGuardianNameBtn.textContent = 'Set My Name';
+    const btn = document.getElementById('setGuardianNameBtn');
+    btn.disabled = false;
+    btn.textContent = 'Update Name';
   }
 }
 
@@ -801,330 +966,171 @@ async function handleChangeGuardian() {
     return;
   }
 
-  const deviceId = changeGuardianDeviceId.value.trim();
-  const newGuardian = newGuardianAddress.value.trim();
-
-  if (!deviceId) {
-    alert('Please enter a device ID');
+  const deviceId = document.getElementById('changeGuardianDeviceId').value.trim();
+  const newGuardian = document.getElementById('newGuardianAddress').value.trim();
+  
+  if (!deviceId || !newGuardian) {
+    alert('Please enter both device ID and new guardian address');
     return;
   }
-
-  if (!newGuardian || !newGuardian.startsWith('0x') || newGuardian.length !== 42) {
-    alert('Please enter a valid wallet address (0x...)');
+  
+  if (!ethers.isAddress(newGuardian)) {
+    alert('Invalid guardian wallet address!');
     return;
   }
-
+  
   try {
-    changeGuardianBtn.disabled = true;
-    changeGuardianBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
-
+    const btn = document.getElementById('changeGuardianBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
     const tx = await contract.changeGuardian(deviceId, newGuardian);
-    console.log('Transaction sent:', tx.hash);
-
-    changeGuardianBtn.textContent = 'Waiting for confirmation...';
+    await tx.wait();
     
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed:', receipt);
-
-    changeGuardianStatus.innerHTML = `
-      <div class="success-message">
-        <h4>✅ Guardian Changed Successfully!</h4>
-        <p><strong>Device:</strong> ${deviceId}</p>
-        <p><strong>New Guardian:</strong> ${newGuardian}</p>
-        <p>The new guardian can now monitor this device and receive alerts.</p>
-        <small>Transaction: ${tx.hash}</small>
-      </div>
-    `;
-    changeGuardianStatus.classList.add('show');
-
-    // Clear inputs
-    changeGuardianDeviceId.value = '';
-    newGuardianAddress.value = '';
-
+    alert('Guardian changed successfully!');
+    
   } catch (error) {
-    console.error('Error changing guardian:', error);
-    
-    let errorMsg = 'Failed to change guardian: ';
-    if (error.code === 'ACTION_REJECTED') {
-      errorMsg += 'Transaction was rejected by user';
-    } else if (error.message.includes('Only patient')) {
-      errorMsg += 'Only the patient can change their guardian';
-    } else if (error.message.includes('not registered')) {
-      errorMsg += 'Device not registered';
-    } else {
-      errorMsg += error.message;
-    }
-    
-    alert(errorMsg);
+    console.error('Error:', error);
+    alert('Failed to change guardian: ' + error.message);
   } finally {
-    changeGuardianBtn.disabled = false;
-    changeGuardianBtn.textContent = 'Change Guardian';
+    const btn = document.getElementById('changeGuardianBtn');
+    btn.disabled = false;
+    btn.textContent = 'Change Guardian';
   }
 }
 
-// ============ WebSocket Notification System ============
+// ===== PATIENT SELECTION FUNCTIONS =====
 
-/**
- * Initialize WebSocket connection for real-time guardian notifications
- * @param {string} guardianAddress - Connected wallet address
- */
-function initNotificationWebSocket(guardianAddress) {
-  try {
-    console.log('Connecting to notification server...');
-    
-    notificationWS = new WebSocket(CONFIG.WEBSOCKET_URL);
-
-    notificationWS.onopen = () => {
-      console.log('✅ Connected to notification server');
-      
-      // Check if Telegram chat ID is saved in localStorage
-      let telegramChatId = localStorage.getItem('telegramChatId');
-      
-      // Use default Telegram chat ID if not saved (all alerts go to admin)
-      if (!telegramChatId) {
-        telegramChatId = '7378178370'; // Default admin chat ID
-        localStorage.setItem('telegramChatId', telegramChatId);
-      }
-      
-      // Subscribe to notifications for this guardian address
-      const subscribeData = {
-        type: 'subscribe',
-        guardianAddress: guardianAddress
-      };
-      
-      // Include Telegram chat ID if available
-      if (telegramChatId) {
-        subscribeData.telegramChatId = telegramChatId;
-      }
-      
-      notificationWS.send(JSON.stringify(subscribeData));
-
-      // Show notification permission request
-      if (Notification.permission === 'default') {
-        requestNotificationPermission();
-      }
-    };
-
-    notificationWS.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('Notification received:', data);
-
-        if (data.type === 'subscribed') {
-          console.log('✅ Subscribed to notifications for', data.guardianAddress);
-          showInAppNotification('Notifications Enabled', 'You will receive real-time patient alerts', 'success');
-        } else if (data.type === 'alert') {
-          handleAlertNotification(data);
-        }
-      } catch (error) {
-        console.error('Error parsing notification:', error);
-      }
-    };
-
-    notificationWS.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      showInAppNotification('Notification Error', 'Failed to connect to notification server', 'error');
-    };
-
-    notificationWS.onclose = () => {
-      console.log('Notification WebSocket closed');
-      // Attempt to reconnect after 5 seconds
-      setTimeout(() => {
-        if (userAddress) {
-          initNotificationWebSocket(userAddress);
-        }
-      }, 5000);
-    };
-
-  } catch (error) {
-    console.error('Failed to initialize notification WebSocket:', error);
-  }
-}
-
-/**
- * Request browser notification permission
- */
-async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    console.log('Browser does not support notifications');
+function updatePatientSelector() {
+  const selector = document.getElementById('patientSelector');
+  const container = document.getElementById('patientSelectorContainer');
+  
+  if (guardianPatients.length === 0) {
+    container.style.display = 'none';
     return;
   }
-
-  if (Notification.permission === 'granted') {
-    return;
-  }
-
-  const permission = await Notification.requestPermission();
-  if (permission === 'granted') {
-    console.log('✅ Notification permission granted');
-    showInAppNotification('Notifications Enabled', 'You will receive desktop notifications for patient alerts', 'success');
-  }
-}
-
-/**
- * Handle incoming alert notification
- * @param {Object} alert - Alert data from server
- */
-function handleAlertNotification(alert) {
-  const { deviceId, patientName, alertType, message, bpm, temp, gps, timestamp } = alert;
-
-  // Show desktop notification
-  showDesktopNotification(alert);
-
-  // Show in-app notification
-  const title = `🚨 ${alertType.toUpperCase()} Alert`;
-  const body = `${patientName || deviceId}: ${message}`;
-  showInAppNotification(title, body, alertType);
-
-  // Play alert sound
-  playAlertSound(alertType);
-
-  // Add to notification queue
-  notificationQueue.unshift({
-    ...alert,
-    receivedAt: Date.now()
-  });
-
-  // Update UI
-  updateNotificationBadge();
-  updateAlertsList();
-}
-
-/**
- * Show desktop notification (if permission granted)
- * @param {Object} alert - Alert data
- */
-function showDesktopNotification(alert) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') {
-    return;
-  }
-
-  const { patientName, deviceId, alertType, message, bpm, temp } = alert;
-
-  const options = {
-    body: `${message}\nHeart Rate: ${bpm} BPM | Temperature: ${temp}°C`,
-    icon: '/assets/alert-icon.png',
-    badge: '/assets/badge-icon.png',
-    tag: `alert-${deviceId}-${Date.now()}`,
-    requireInteraction: alertType === 'critical',
-    vibrate: alertType === 'critical' ? [200, 100, 200, 100, 200] : [200, 100, 200]
-  };
-
-  const notification = new Notification(
-    `🚨 ${alertType.toUpperCase()}: ${patientName || deviceId}`,
-    options
-  );
-
-  notification.onclick = () => {
-    window.focus();
-    notification.close();
-  };
-}
-
-/**
- * Show in-app notification banner
- */
-function showInAppNotification(title, message, type = 'info') {
-  const existing = document.querySelector('.notification-banner');
-  if (existing) {
-    existing.remove();
-  }
-
-  const banner = document.createElement('div');
-  banner.className = `notification-banner notification-${type}`;
-  banner.innerHTML = `
-    <div class="notification-content">
-      <h4>${title}</h4>
-      <p>${message}</p>
-    </div>
-    <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-  `;
-
-  document.body.appendChild(banner);
-
-  if (type !== 'critical') {
-    setTimeout(() => {
-      banner.classList.add('fade-out');
-      setTimeout(() => banner.remove(), 300);
-    }, 10000);
-  }
-}
-
-/**
- * Play alert sound
- */
-function playAlertSound(alertType) {
-  try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    if (alertType === 'critical') {
-      oscillator.frequency.value = 880;
-      gainNode.gain.value = 0.3;
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.2);
-      setTimeout(() => {
-        const osc2 = audioContext.createOscillator();
-        osc2.connect(gainNode);
-        osc2.frequency.value = 880;
-        osc2.start();
-        osc2.stop(audioContext.currentTime + 0.2);
-      }, 300);
-    } else {
-      oscillator.frequency.value = 440;
-      gainNode.gain.value = 0.2;
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.15);
+  
+  // Show the selector
+  container.style.display = 'flex';
+  
+  // Populate dropdown
+  selector.innerHTML = '<option value="">Select a patient...</option>';
+  guardianPatients.forEach(patient => {
+    const option = document.createElement('option');
+    option.value = patient.deviceId;
+    option.textContent = `${patient.fullName} (${patient.deviceId})`;
+    if (patient.deviceId === selectedDeviceId) {
+      option.selected = true;
     }
+    selector.appendChild(option);
+  });
+  
+  // Add change event listener (only once)
+  if (!selector.dataset.listenerAttached) {
+    selector.addEventListener('change', (e) => {
+      const deviceId = e.target.value;
+      if (deviceId) {
+        selectPatient(deviceId);
+      }
+    });
+    selector.dataset.listenerAttached = 'true';
+  }
+}
+
+async function selectPatient(deviceId) {
+  console.log(`Selecting patient: ${deviceId}`);
+  selectedDeviceId = deviceId;
+  
+  // Update the dropdown
+  const selector = document.getElementById('patientSelector');
+  if (selector) {
+    selector.value = deviceId;
+  }
+  
+  // Load the most recent data for this patient
+  await loadLatestPatientData(deviceId);
+}
+
+async function loadLatestPatientData(deviceId) {
+  if (!gun || !deviceId) return;
+  
+  console.log(`Loading latest data for ${deviceId}...`);
+  
+  try {
+    // First, get device info from blockchain for home location
+    const device = await contract.getDevice(deviceId);
+    console.log(`Device home location: ${device.homeLocation}`);
+    
+    // Search through GunDB for the most recent event for this device
+    let latestEvent = null;
+    let latestTimestamp = 0;
+    let eventsFound = 0;
+    
+    // Create a promise that resolves after collecting events
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 2000); // Wait max 2 seconds
+      
+      gun.get('events').map().once((data, key) => {
+        if (data && data.deviceId === deviceId) {
+          eventsFound++;
+          const eventTimestamp = data.timestamp || data.storedAt || 0;
+          console.log(`   Found event from ${new Date(eventTimestamp).toLocaleString()}`);
+          
+          if (eventTimestamp > latestTimestamp) {
+            latestTimestamp = eventTimestamp;
+            latestEvent = data;
+          }
+        }
+      });
+    });
+    
+    console.log(`📊 Scanned events: ${eventsFound} events found for ${deviceId}`);
+    
+    if (latestEvent) {
+      console.log('✅ Found latest event:', latestEvent);
+      updateDashboard(latestEvent);
+    } else {
+      console.log('⚠️ No sensor data found for this patient in GunDB');
+      console.log('💡 The patient device may not have sent data yet, or GunDB is not synchronized');
+      // Reset dashboard to show no data
+      resetDashboard();
+    }
+    
   } catch (error) {
-    console.error('Failed to play alert sound:', error);
+    console.error('Error loading patient data:', error);
+    resetDashboard();
   }
 }
 
-/**
- * Update notification badge
- */
-function updateNotificationBadge() {
-  const unreadCount = notificationQueue.filter(n => !n.read).length;
-  const badge = document.getElementById('notificationBadge');
-  if (badge) {
-    badge.textContent = unreadCount > 0 ? unreadCount : '';
-    badge.style.display = unreadCount > 0 ? 'block' : 'none';
-  }
-  if (unreadCount > 0) {
-    document.title = `(${unreadCount}) BLocate - Patient Alerts`;
-  } else {
-    document.title = 'BLocate - Patient Monitoring';
-  }
+function resetDashboard() {
+  console.log('🔄 Resetting dashboard...');
+  
+  // Reset vital signs
+  document.getElementById('bpmValue').textContent = '--';
+  document.getElementById('tempValue').textContent = '--';
+  document.getElementById('spo2Value').textContent = '--';
+  document.getElementById('deviceValue').textContent = selectedDeviceId || '--';
+  document.getElementById('locationStatus').textContent = 'No data';
+  document.getElementById('distanceFromHome').textContent = '--';
+  document.getElementById('lastUpdateTime').textContent = 'No data';
+  
+  // Reset statuses
+  document.getElementById('bpmStatus').className = 'vital-status normal';
+  document.getElementById('bpmStatus').textContent = 'Normal';
+  document.getElementById('tempStatus').className = 'vital-status normal';
+  document.getElementById('tempStatus').textContent = 'Normal';
+  document.getElementById('spo2Status').className = 'vital-status normal';
+  document.getElementById('spo2Status').textContent = 'Normal';
+  document.getElementById('geoStatus').className = 'vital-status normal';
+  document.getElementById('geoStatus').textContent = 'Within Safe Zone';
+  
+  const deviceStatus = document.getElementById('deviceStatus');
+  deviceStatus.innerHTML = `
+    <span class="status-dot"></span>
+    <span id="deviceStatusText">Waiting for data...</span>
+  `;
+  deviceStatus.className = 'vital-status';
+  
+  // Hide alert banner
+  document.getElementById('alertBanner').style.display = 'none';
 }
-
-/**
- * Update alerts list
- */
-function updateAlertsList() {
-  const alertsList = document.getElementById('alertsList');
-  if (!alertsList) return;
-
-  if (notificationQueue.length === 0) {
-    alertsList.innerHTML = '<p class="no-alerts">No alerts</p>';
-    return;
-  }
-
-  alertsList.innerHTML = notificationQueue.slice(0, 10).map(alert => `
-    <div class="alert-item alert-${alert.alertType}">
-      <div class="alert-header">
-        <strong>${alert.patientName || alert.deviceId}</strong>
-        <span class="alert-time">${new Date(alert.timestamp).toLocaleString()}</span>
-      </div>
-      <div class="alert-body">
-        <p>${alert.message}</p>
-        <div class="alert-vitals">❤️ ${alert.bpm} BPM | 🌡️ ${alert.temp}°C</div>
-      </div>
-    </div>
-  `).join('');
-}
-

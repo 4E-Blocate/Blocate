@@ -24,7 +24,7 @@ const char* password = "18181818";
 // MQTT Broker settings
 const char* mqtt_server = "10.160.83.208";  // Your computer's IP running MQTT broker
 const int mqtt_port = 1883;
-const char* device_id = "patient-001";
+const char* device_id = "patient-002";
 
 // Topics
 char telemetry_topic[50];
@@ -41,7 +41,7 @@ String currentGPS = "14.5995,120.9842";
 
 // Timing
 unsigned long lastPublish = 0;
-const long publishInterval = 600000;  // Publish every 10 minutes (600,000ms)
+const long publishInterval = 5000;  // Publish every 5 seconds
 
 void setup() {
   Serial.begin(115200);
@@ -97,7 +97,7 @@ void setupWiFi() {
     Serial.print(".");
   }
   
-  Serial.println("\n✅ WiFi connected!");
+  Serial.println("\n WiFi connected!");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 }
@@ -107,9 +107,9 @@ void reconnectMQTT() {
     Serial.print("Connecting to MQTT broker...");
     
     if (client.connect(device_id)) {
-      Serial.println(" ✅ Connected!");
+      Serial.println("Connected!");
     } else {
-      Serial.print(" ❌ Failed, rc=");
+      Serial.print("Failed, rc=");
       Serial.print(client.state());
       Serial.println(" Retrying in 5 seconds...");
       delay(5000);
@@ -137,7 +137,7 @@ void readSensors() {
   float lng = 120.9842 + (random(-50, 50) / 10000.0);
   currentGPS = String(lat, 6) + "," + String(lng, 6);
   
-  Serial.println("\n📊 Sensor Readings:");
+  Serial.println("\n Sensor Readings:");
   Serial.printf("   BPM: %.1f\n", currentBPM);
   Serial.printf("   Temp: %.1f°C\n", currentTemp);
   Serial.printf("   GPS: %s\n", currentGPS.c_str());
@@ -158,14 +158,14 @@ void publishTelemetry() {
   serializeJson(doc, jsonBuffer);
   
   // Publish to MQTT
-  Serial.println("\n📤 Publishing telemetry...");
+  Serial.println("\n Publishing telemetry...");
   Serial.printf("   Topic: %s\n", telemetry_topic);
   Serial.printf("   Payload: %s\n", jsonBuffer);
   
   if (client.publish(telemetry_topic, jsonBuffer)) {
-    Serial.println("   ✅ Published successfully!");
+    Serial.println("   Published successfully!");
   } else {
-    Serial.println("   ❌ Publish failed!");
+    Serial.println("   Publish failed!");
   }
 }
 
@@ -185,20 +185,20 @@ void publishAlert() {
   char jsonBuffer[256];
   serializeJson(doc, jsonBuffer);
   
-  Serial.println("\n🚨 Publishing ALERT...");
+  Serial.println("\n Publishing ALERT...");
   Serial.printf("   Topic: %s\n", alert_topic);
   
   if (client.publish(alert_topic, jsonBuffer)) {
-    Serial.println("   ✅ Alert sent!");
+    Serial.println("   Alert sent!");
   } else {
-    Serial.println("   ❌ Alert failed!");
+    Serial.println("   Alert failed!");
   }
 }
 
 // Example: Call this function when emergency button is pressed
 // You can connect a button to a GPIO pin and call this in the interrupt
 void onEmergencyButton() {
-  Serial.println("\n⚠️  EMERGENCY BUTTON PRESSED!");
+  Serial.println("\n EMERGENCY BUTTON PRESSED!");
   publishAlert();
 }
 

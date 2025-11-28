@@ -17,24 +17,28 @@ function generateMockVitals() {
   // Normal ranges:
   // BPM: 60-100 (normal), 100-120 (alert), >120 (critical)
   // Temp: 36.1-37.2°C (normal), 37.3-38°C (alert), >38°C (critical)
+  // SpO2: 95-100% (normal), 90-94% (alert), <90% (critical)
   
   const scenarios = [
     // Normal vitals
     {
       bpm: 70 + Math.random() * 20,      // 70-90
       temp: 36.2 + Math.random() * 0.8,  // 36.2-37.0
+      spo2: 96 + Math.random() * 3,      // 96-99%
       scenario: 'normal'
     },
     // Alert vitals
     {
       bpm: 100 + Math.random() * 15,     // 100-115
       temp: 37.4 + Math.random() * 0.4,  // 37.4-37.8
+      spo2: 91 + Math.random() * 3,      // 91-94%
       scenario: 'alert'
     },
     // Critical vitals
     {
       bpm: 125 + Math.random() * 15,     // 125-140
       temp: 38.2 + Math.random() * 0.5,  // 38.2-38.7
+      spo2: 84 + Math.random() * 5,      // 84-89%
       scenario: 'critical'
     }
   ];
@@ -59,6 +63,7 @@ function generateMockVitals() {
     deviceId: DEVICE_ID,
     bpm: Math.round(selectedScenario.bpm),
     temp: parseFloat(selectedScenario.temp.toFixed(1)),
+    spo2: Math.round(selectedScenario.spo2),
     gps: gps,
     timestamp: Date.now(),
     scenario: selectedScenario.scenario
@@ -96,7 +101,7 @@ function sendTelemetry() {
   
   console.log(`📤 [${new Date().toLocaleTimeString()}] Sending telemetry:`);
   console.log(`   Topic: ${topic}`);
-  console.log(`   BPM: ${data.bpm} | Temp: ${data.temp}°C | GPS: ${data.gps}`);
+  console.log(`   BPM: ${data.bpm} | Temp: ${data.temp}°C | SpO2: ${data.spo2}% | GPS: ${data.gps}`);
   console.log(`   Scenario: ${data.scenario.toUpperCase()}`);
   
   client.publish(topic, JSON.stringify(data), (err) => {
