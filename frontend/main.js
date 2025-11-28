@@ -2,15 +2,20 @@ import { ethers } from 'ethers';
 
 // Configuration - UPDATE THIS AFTER DEPLOYMENT!
 const CONFIG = {
-  CONTRACT_ADDRESS: "0xF9C608cD2E5Ae512C93C2597aC86764c99C9021C", // Replace with your deployed address
+  CONTRACT_ADDRESS: "0x717CD91f1C0897CEc98e3e1F85d3Cd6FE7D73C4B", // Replace with your deployed address
   SEPOLIA_CHAIN_ID: "0xaa36a7", // 11155111 in decimal
   SEPOLIA_RPC: "https://eth-sepolia.g.alchemy.com/v2/demo", // Public RPC for fallback
-  GUNDB_PEERS: ['http://localhost:8765/gun'] // GunDB relay server from backend
+  GUNDB_PEERS: ['http://localhost:8765/gun'], // GunDB relay server from backend
+  WEBSOCKET_URL: 'ws://localhost:8080/notifications' // WebSocket notification server
 };
 
 // Initialize GunDB
 let gun = null;
 let sensorDataListener = null;
+
+// WebSocket for real-time notifications
+let notificationWS = null;
+let notificationQueue = [];
 
 // Try to load Gun if available
 async function initGunDB() {
@@ -78,6 +83,7 @@ const CONTRACT_ABI = [
   "function getPatientDevices(address patient) view returns (string[])",
   "function setGuardianName(string name)",
   "function getGuardianName(address guardian) view returns (string)",
+  "function changeGuardian(string deviceId, address newGuardian)",
   "function deviceRegistry() view returns (address)",
   "function eventLogger() view returns (address)"
 ];
@@ -105,6 +111,10 @@ const networkName = document.getElementById('networkName');
 const setGuardianNameBtn = document.getElementById('setGuardianNameBtn');
 const guardianNameInput = document.getElementById('guardianNameInput');
 const guardianNameStatus = document.getElementById('guardianNameStatus');
+const changeGuardianBtn = document.getElementById('changeGuardianBtn');
+const changeGuardianDeviceId = document.getElementById('changeGuardianDeviceId');
+const newGuardianAddress = document.getElementById('newGuardianAddress');
+const changeGuardianStatus = document.getElementById('changeGuardianStatus');
 
 // Initialize
 init();
@@ -132,6 +142,7 @@ function init() {
   getMyDevicesBtn.addEventListener('click', getMyDevices);
   getMyPatientsBtn.addEventListener('click', getMyPatients);
   setGuardianNameBtn.addEventListener('click', handleSetGuardianName);
+  changeGuardianBtn.addEventListener('click', handleChangeGuardian);
 
   // Listen for account changes
   window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -252,6 +263,17 @@ async function connectWallet() {
 
     // Create contract instance
     contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+    
+    // Get DeviceRegistry contract address and create instance for guardian name
+    const deviceRegistryAddress = await contract.deviceRegistry();
+    console.log('DeviceRegistry address:', deviceRegistryAddress);
+    
+    const DEVICE_REGISTRY_ABI = [
+      "function setGuardianName(string name)",
+      "function getGuardianName(address guardian) view returns (string)"
+    ];
+    
+    window.deviceRegistryContract = new ethers.Contract(deviceRegistryAddress, DEVICE_REGISTRY_ABI, signer);
 
     // Update UI
     walletStatus.innerHTML = `<span class="status-icon">✅</span><span class="status-text">Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(38)}</span>`;
@@ -261,6 +283,9 @@ async function connectWallet() {
 
     console.log('Connected to wallet:', userAddress);
     console.log('Contract:', CONFIG.CONTRACT_ADDRESS);
+
+    // Initialize WebSocket notifications for this guardian
+    initNotificationWebSocket(userAddress);
 
     // Load current guardian name if set
     await loadCurrentGuardianName();
@@ -273,19 +298,29 @@ async function connectWallet() {
 
 async function loadCurrentGuardianName() {
   try {
-    const currentName = await contract.getGuardianName(userAddress);
+    console.log('Loading guardian name for:', userAddress);
+    
+    // Use DeviceRegistry contract directly
+    const directContract = window.deviceRegistryContract || contract;
+    const currentName = await directContract.getGuardianName(userAddress);
+    console.log('Guardian name result:', currentName);
+    
+    const displayDiv = document.getElementById('currentGuardianNameDisplay');
+    const displayText = document.getElementById('currentGuardianNameText');
+    
     if (currentName && currentName.trim() !== '') {
+      displayText.textContent = currentName;
+      displayDiv.style.display = 'block';
       guardianNameInput.placeholder = `Current: ${currentName}`;
-      guardianNameStatus.innerHTML = `
-        <div class="info-message">
-          <p><strong>Your Current Guardian Name:</strong> ${currentName}</p>
-          <p><small>Enter a new name above to update it.</small></p>
-        </div>
-      `;
-      guardianNameStatus.classList.add('show');
+      console.log('✅ Name displayed:', currentName);
+    } else {
+      displayText.textContent = 'Not set';
+      displayDiv.style.display = 'block';
+      guardianNameInput.placeholder = 'e.g., Dr. Smith, Mom, John Doe';
+      console.log('⚠️ No name set');
     }
   } catch (error) {
-    console.error('Error loading guardian name:', error);
+    console.error('❌ Error loading guardian name:', error);
   }
 }
 
@@ -325,6 +360,10 @@ function disconnectWallet() {
 
 // Helper function to get guardian display name
 async function getGuardianDisplayName(guardianAddress) {
+  if (!contract) {
+    return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
+  }
+  
   try {
     const name = await contract.getGuardianName(guardianAddress);
     if (name && name.trim() !== '') {
@@ -332,6 +371,7 @@ async function getGuardianDisplayName(guardianAddress) {
     }
     return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
   } catch (error) {
+    console.error('Error getting guardian name:', error);
     return `${guardianAddress.substring(0, 6)}...${guardianAddress.substring(38)}`;
   }
 }
@@ -694,7 +734,7 @@ async function getDeviceEvents() {
 }
 
 async function handleSetGuardianName() {
-  if (!contract) {
+  if (!contract || !window.deviceRegistryContract) {
     alert('Please connect your wallet first!');
     return;
   }
@@ -714,7 +754,8 @@ async function handleSetGuardianName() {
     setGuardianNameBtn.disabled = true;
     setGuardianNameBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
 
-    const tx = await contract.setGuardianName(name);
+    // Use DeviceRegistry contract directly
+    const tx = await window.deviceRegistryContract.setGuardianName(name);
     console.log('Transaction sent:', tx.hash);
 
     setGuardianNameBtn.textContent = 'Waiting for confirmation...';
@@ -733,8 +774,9 @@ async function handleSetGuardianName() {
     `;
     guardianNameStatus.classList.add('show');
 
-    // Clear input
+    // Clear input and reload name
     guardianNameInput.value = '';
+    await loadCurrentGuardianName();
 
   } catch (error) {
     console.error('Error setting guardian name:', error);
@@ -752,3 +794,337 @@ async function handleSetGuardianName() {
     setGuardianNameBtn.textContent = 'Set My Name';
   }
 }
+
+async function handleChangeGuardian() {
+  if (!contract) {
+    alert('Please connect your wallet first!');
+    return;
+  }
+
+  const deviceId = changeGuardianDeviceId.value.trim();
+  const newGuardian = newGuardianAddress.value.trim();
+
+  if (!deviceId) {
+    alert('Please enter a device ID');
+    return;
+  }
+
+  if (!newGuardian || !newGuardian.startsWith('0x') || newGuardian.length !== 42) {
+    alert('Please enter a valid wallet address (0x...)');
+    return;
+  }
+
+  try {
+    changeGuardianBtn.disabled = true;
+    changeGuardianBtn.innerHTML = '<span class="loading"></span> Waiting for signature...';
+
+    const tx = await contract.changeGuardian(deviceId, newGuardian);
+    console.log('Transaction sent:', tx.hash);
+
+    changeGuardianBtn.textContent = 'Waiting for confirmation...';
+    
+    const receipt = await tx.wait();
+    console.log('Transaction confirmed:', receipt);
+
+    changeGuardianStatus.innerHTML = `
+      <div class="success-message">
+        <h4>✅ Guardian Changed Successfully!</h4>
+        <p><strong>Device:</strong> ${deviceId}</p>
+        <p><strong>New Guardian:</strong> ${newGuardian}</p>
+        <p>The new guardian can now monitor this device and receive alerts.</p>
+        <small>Transaction: ${tx.hash}</small>
+      </div>
+    `;
+    changeGuardianStatus.classList.add('show');
+
+    // Clear inputs
+    changeGuardianDeviceId.value = '';
+    newGuardianAddress.value = '';
+
+  } catch (error) {
+    console.error('Error changing guardian:', error);
+    
+    let errorMsg = 'Failed to change guardian: ';
+    if (error.code === 'ACTION_REJECTED') {
+      errorMsg += 'Transaction was rejected by user';
+    } else if (error.message.includes('Only patient')) {
+      errorMsg += 'Only the patient can change their guardian';
+    } else if (error.message.includes('not registered')) {
+      errorMsg += 'Device not registered';
+    } else {
+      errorMsg += error.message;
+    }
+    
+    alert(errorMsg);
+  } finally {
+    changeGuardianBtn.disabled = false;
+    changeGuardianBtn.textContent = 'Change Guardian';
+  }
+}
+
+// ============ WebSocket Notification System ============
+
+/**
+ * Initialize WebSocket connection for real-time guardian notifications
+ * @param {string} guardianAddress - Connected wallet address
+ */
+function initNotificationWebSocket(guardianAddress) {
+  try {
+    console.log('Connecting to notification server...');
+    
+    notificationWS = new WebSocket(CONFIG.WEBSOCKET_URL);
+
+    notificationWS.onopen = () => {
+      console.log('✅ Connected to notification server');
+      
+      // Check if Telegram chat ID is saved in localStorage
+      let telegramChatId = localStorage.getItem('telegramChatId');
+      
+      // Use default Telegram chat ID if not saved (all alerts go to admin)
+      if (!telegramChatId) {
+        telegramChatId = '7378178370'; // Default admin chat ID
+        localStorage.setItem('telegramChatId', telegramChatId);
+      }
+      
+      // Subscribe to notifications for this guardian address
+      const subscribeData = {
+        type: 'subscribe',
+        guardianAddress: guardianAddress
+      };
+      
+      // Include Telegram chat ID if available
+      if (telegramChatId) {
+        subscribeData.telegramChatId = telegramChatId;
+      }
+      
+      notificationWS.send(JSON.stringify(subscribeData));
+
+      // Show notification permission request
+      if (Notification.permission === 'default') {
+        requestNotificationPermission();
+      }
+    };
+
+    notificationWS.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Notification received:', data);
+
+        if (data.type === 'subscribed') {
+          console.log('✅ Subscribed to notifications for', data.guardianAddress);
+          showInAppNotification('Notifications Enabled', 'You will receive real-time patient alerts', 'success');
+        } else if (data.type === 'alert') {
+          handleAlertNotification(data);
+        }
+      } catch (error) {
+        console.error('Error parsing notification:', error);
+      }
+    };
+
+    notificationWS.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      showInAppNotification('Notification Error', 'Failed to connect to notification server', 'error');
+    };
+
+    notificationWS.onclose = () => {
+      console.log('Notification WebSocket closed');
+      // Attempt to reconnect after 5 seconds
+      setTimeout(() => {
+        if (userAddress) {
+          initNotificationWebSocket(userAddress);
+        }
+      }, 5000);
+    };
+
+  } catch (error) {
+    console.error('Failed to initialize notification WebSocket:', error);
+  }
+}
+
+/**
+ * Request browser notification permission
+ */
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    console.log('Browser does not support notifications');
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    console.log('✅ Notification permission granted');
+    showInAppNotification('Notifications Enabled', 'You will receive desktop notifications for patient alerts', 'success');
+  }
+}
+
+/**
+ * Handle incoming alert notification
+ * @param {Object} alert - Alert data from server
+ */
+function handleAlertNotification(alert) {
+  const { deviceId, patientName, alertType, message, bpm, temp, gps, timestamp } = alert;
+
+  // Show desktop notification
+  showDesktopNotification(alert);
+
+  // Show in-app notification
+  const title = `🚨 ${alertType.toUpperCase()} Alert`;
+  const body = `${patientName || deviceId}: ${message}`;
+  showInAppNotification(title, body, alertType);
+
+  // Play alert sound
+  playAlertSound(alertType);
+
+  // Add to notification queue
+  notificationQueue.unshift({
+    ...alert,
+    receivedAt: Date.now()
+  });
+
+  // Update UI
+  updateNotificationBadge();
+  updateAlertsList();
+}
+
+/**
+ * Show desktop notification (if permission granted)
+ * @param {Object} alert - Alert data
+ */
+function showDesktopNotification(alert) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return;
+  }
+
+  const { patientName, deviceId, alertType, message, bpm, temp } = alert;
+
+  const options = {
+    body: `${message}\nHeart Rate: ${bpm} BPM | Temperature: ${temp}°C`,
+    icon: '/assets/alert-icon.png',
+    badge: '/assets/badge-icon.png',
+    tag: `alert-${deviceId}-${Date.now()}`,
+    requireInteraction: alertType === 'critical',
+    vibrate: alertType === 'critical' ? [200, 100, 200, 100, 200] : [200, 100, 200]
+  };
+
+  const notification = new Notification(
+    `🚨 ${alertType.toUpperCase()}: ${patientName || deviceId}`,
+    options
+  );
+
+  notification.onclick = () => {
+    window.focus();
+    notification.close();
+  };
+}
+
+/**
+ * Show in-app notification banner
+ */
+function showInAppNotification(title, message, type = 'info') {
+  const existing = document.querySelector('.notification-banner');
+  if (existing) {
+    existing.remove();
+  }
+
+  const banner = document.createElement('div');
+  banner.className = `notification-banner notification-${type}`;
+  banner.innerHTML = `
+    <div class="notification-content">
+      <h4>${title}</h4>
+      <p>${message}</p>
+    </div>
+    <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+  `;
+
+  document.body.appendChild(banner);
+
+  if (type !== 'critical') {
+    setTimeout(() => {
+      banner.classList.add('fade-out');
+      setTimeout(() => banner.remove(), 300);
+    }, 10000);
+  }
+}
+
+/**
+ * Play alert sound
+ */
+function playAlertSound(alertType) {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (alertType === 'critical') {
+      oscillator.frequency.value = 880;
+      gainNode.gain.value = 0.3;
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.2);
+      setTimeout(() => {
+        const osc2 = audioContext.createOscillator();
+        osc2.connect(gainNode);
+        osc2.frequency.value = 880;
+        osc2.start();
+        osc2.stop(audioContext.currentTime + 0.2);
+      }, 300);
+    } else {
+      oscillator.frequency.value = 440;
+      gainNode.gain.value = 0.2;
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.15);
+    }
+  } catch (error) {
+    console.error('Failed to play alert sound:', error);
+  }
+}
+
+/**
+ * Update notification badge
+ */
+function updateNotificationBadge() {
+  const unreadCount = notificationQueue.filter(n => !n.read).length;
+  const badge = document.getElementById('notificationBadge');
+  if (badge) {
+    badge.textContent = unreadCount > 0 ? unreadCount : '';
+    badge.style.display = unreadCount > 0 ? 'block' : 'none';
+  }
+  if (unreadCount > 0) {
+    document.title = `(${unreadCount}) BLocate - Patient Alerts`;
+  } else {
+    document.title = 'BLocate - Patient Monitoring';
+  }
+}
+
+/**
+ * Update alerts list
+ */
+function updateAlertsList() {
+  const alertsList = document.getElementById('alertsList');
+  if (!alertsList) return;
+
+  if (notificationQueue.length === 0) {
+    alertsList.innerHTML = '<p class="no-alerts">No alerts</p>';
+    return;
+  }
+
+  alertsList.innerHTML = notificationQueue.slice(0, 10).map(alert => `
+    <div class="alert-item alert-${alert.alertType}">
+      <div class="alert-header">
+        <strong>${alert.patientName || alert.deviceId}</strong>
+        <span class="alert-time">${new Date(alert.timestamp).toLocaleString()}</span>
+      </div>
+      <div class="alert-body">
+        <p>${alert.message}</p>
+        <div class="alert-vitals">❤️ ${alert.bpm} BPM | 🌡️ ${alert.temp}°C</div>
+      </div>
+    </div>
+  `).join('');
+}
+

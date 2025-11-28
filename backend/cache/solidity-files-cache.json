@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\DeviceRegistry.sol": {
-      "lastModificationDate": 1764259284020,
-      "contentHash": "6676fe0cdd2f85a99ac4ebcc17233f36",
+      "lastModificationDate": 1764288886350,
+      "contentHash": "eb9425ff835c1683d2808caf84d388ed",
       "sourceName": "contracts/DeviceRegistry.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -76,8 +76,8 @@
       ]
     },
     "C:\\Users\\David P\\Documents\\VSC\\4EBE\\backend\\contracts\\PatientMonitor.sol": {
-      "lastModificationDate": 1764259284020,
-      "contentHash": "5a9773f43f3fb3e0878e4b471c15e858",
+      "lastModificationDate": 1764288886350,
+      "contentHash": "9635f035cc334c8f3df61f8cca0888ed",
       "sourceName": "contracts/PatientMonitor.sol",
       "solcConfig": {
         "version": "0.8.20",

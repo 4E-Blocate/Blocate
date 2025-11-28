@@ -84,7 +84,7 @@ contract PatientMonitor {
         string memory deviceId,
         address newGuardian
     ) external {
-        deviceRegistry.changeGuardian(deviceId, newGuardian);
+        deviceRegistry.changeGuardianFor(deviceId, newGuardian, msg.sender);
     }
     
     function deactivateDevice(string memory deviceId) external {
